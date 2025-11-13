@@ -1,0 +1,7 @@
+{
+    "region": "us-east-1",
+    "user_pool_id": "us-east-1_g6XvaXoRB",
+    "app_client_id": "52obano77r6ev0rphajdrnn402",
+    "domain_url": "https://easycart-1763060401.auth.us-east-1.amazoncognito.com",
+    "s3_logo_url": "https://easycart-proj-nci.s3.us-east-1.amazonaws.com/images/EasyCartLogo.png"
+}

@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-m1(g%mz7^2kj(8%qwqc!lfhs1d)u-#==m-00&9#^!ckp3!e&3z
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['79598be562514c25bb443db7a0a15de2.vfs.cloud9.us-east-1.amazonaws.com']
 
 
 # Application definition
@@ -63,6 +63,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'easycart_project.context_processors.global_settings', 
             ],
         },
     },
@@ -122,3 +123,43 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+import os
+import json
+import boto3
+from datetime import datetime, timedelta
+
+CONFIG_FILE = os.path.join(BASE_DIR, "infra", "config.json")
+
+with open(CONFIG_FILE) as f:
+    infra_config = json.load(f)
+
+# Cognito settings
+COGNITO = {
+    "region": infra_config.get("region"),
+    "user_pool_id": infra_config.get("user_pool_id"),
+    "app_client_id": infra_config.get("app_client_id"),
+    "domain_url": infra_config.get("domain_url"),
+}
+
+S3_BUCKET = "easycart-proj-nci"  # your bucket
+S3_REGION = infra_config.get("region")
+S3_LOGO_KEY = infra_config.get("s3_logo_url")
+
+
+def generate_presigned_logo_url():
+    s3 = boto3.client("s3", region_name=S3_REGION)
+
+    try:
+        url = s3.generate_presigned_url(
+            ClientMethod="get_object",
+            Params={
+                "Bucket": S3_BUCKET,
+                "Key": S3_LOGO_KEY
+            },
+            ExpiresIn=3600  # 1 hour
+        )
+        return url
+    except Exception as e:
+        print("Error generating pre-signed URL:", e)
+        return None

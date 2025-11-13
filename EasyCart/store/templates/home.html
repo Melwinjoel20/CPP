@@ -174,35 +174,77 @@
     .footer-main a:hover {
       text-decoration: underline;
     }
+    
+    .nav-login-btn {
+      background-color: #1d3557;       /* Deep blue */
+      color: #ffffff;
+      border: 2px solid transparent;
+      border-radius: 50px;
+      padding: 8px 18px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      transition: all 0.3s ease-in-out;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    /* Hover animation */
+    .nav-login-btn:hover {
+      background-color: #457b9d;       /* Light blue */
+      border-color: #1d3557;
+      color: #ffffff;
+      transform: translateY(-3px);
+      box-shadow: 0px 4px 12px rgba(69, 123, 157, 0.35);
+    }
+    
+    /* Icon animation */
+    .nav-login-btn i {
+      transition: transform 0.3s ease-in-out;
+    }
+    
+    .nav-login-btn:hover i {
+      transform: translateX(3px);
+    }
+
   </style>
 </head>
 
 <body>
   <!-- 🧭 NAVBAR -->
+  <!-- 🧭 NAVBAR -->
   <nav class="navbar navbar-expand-lg fixed-top navbar-main">
     <div class="container-fluid">
-      <a class="navbar-brand navbar-brand-title" href="#">🛒 EasyCart</a>
-
+  
+      <!-- Brand With S3 Logo -->
+      <a class="navbar-brand d-flex align-items-center gap-2" href="{% url 'home' %}">
+        <img src="{{ SIGNED_LOGO_URL }}" alt="EasyCart Logo" class="brand-logo">
+        <span class="navbar-brand-title">EasyCart</span>
+      </a>
+  
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent"
               aria-controls="navbarContent" aria-expanded="false" aria-label="Toggle navigation">
         <span class="navbar-toggler-icon"></span>
       </button>
-
+  
       <div class="collapse navbar-collapse justify-content-between" id="navbarContent">
         <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-          <li class="nav-item"><a class="nav-link navbar-link" href="#">Home</a></li>
+          <li class="nav-item"><a class="nav-link navbar-link" href="{% url 'home' %}">Home</a></li>
           <li class="nav-item"><a class="nav-link navbar-link" href="#">Products</a></li>
           <li class="nav-item"><a class="nav-link navbar-link" href="#">Offers</a></li>
           <li class="nav-item"><a class="nav-link navbar-link" href="#">Contact</a></li>
           <li class="nav-item"><a class="nav-link navbar-link" href="#">My Cart</a></li>
         </ul>
-
-        <a href="#" class="btn btn-blue-outline d-flex align-items-center px-3 py-2 rounded-pill">
-          <i class="bi bi-person me-2"></i> Sign In / Join
+  
+        <a href="{% url 'login' %}" class="nav-login-btn">
+          <i class="bi bi-person-circle"></i>
+          Sign In / Join
         </a>
+  
       </div>
     </div>
   </nav>
+
 
   <!-- 🦸 HERO SECTION -->
   {% block hero %}
@@ -243,7 +285,7 @@
 
   <!-- 🦶 FOOTER -->
   <footer class="footer-main">
-    <p>&copy; 2025 EasyCart | Designed with 💙 using Django</p>
+    <p>&copy; EasyCart</p>
   </footer>
 
   <!-- JS -->

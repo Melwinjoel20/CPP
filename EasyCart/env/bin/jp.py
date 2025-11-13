@@ -1,4 +1,4 @@
-#!/Volumes/Melwin/CPP Project/CPP/EasyCart/env/bin/python3
+#!/home/ec2-user/environment/CPP/EasyCart/env/bin/python3
 
 import sys
 import json
