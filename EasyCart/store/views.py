@@ -2,13 +2,13 @@ import boto3
 from django.shortcuts import render, redirect
 from django.conf import settings
 from django.contrib import messages
+from django.contrib.messages import get_messages
 
 # Home / Base view
 def base(request):
     return render(request, 'base.html')
 
 def home(request):
-    print("SESSION:", request.session.get("user_name"))
     return render(request, 'home.html')
 
 
@@ -17,7 +17,15 @@ cognito = boto3.client(
     region_name=settings.COGNITO["region"]
 )
 
+def clear_messages(request):
+    storage = get_messages(request)
+    for _ in storage:
+        pass
+
 def login_view(request):
+    # Always clear previous messages when entering login page
+    clear_messages(request)
+    
     if request.method == "POST":
         email = request.POST.get("email").strip()
         password = request.POST.get("password").strip()
@@ -89,7 +97,9 @@ def login_view(request):
 
 def logout_view(request):
     request.session.flush()
-    return redirect("home")
+    clear_messages(request)
+    messages.success(request, "You have been logged out.")
+    return redirect("login")
     
 def register(request):
     if request.method == "POST":
