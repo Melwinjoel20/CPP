@@ -127,7 +127,9 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 import os
 import json
 import boto3
-from datetime import datetime, timedelta
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent.parent
 
 CONFIG_FILE = os.path.join(BASE_DIR, "infra", "config.json")
 
@@ -142,16 +144,16 @@ COGNITO = {
     "domain_url": infra_config.get("domain_url"),
 }
 
-S3_BUCKET = "easycart-proj-nci"  # your bucket
+# S3 Settings
+S3_BUCKET = "easycart-proj-nci"
 S3_REGION = infra_config.get("region")
-S3_LOGO_KEY = infra_config.get("s3_logo_url")
-
+S3_LOGO_KEY = infra_config.get("s3_logo_url")  # Already correct (images/EasyCartLogo.png)
 
 def generate_presigned_logo_url():
     s3 = boto3.client("s3", region_name=S3_REGION)
 
     try:
-        url = s3.generate_presigned_url(
+        return s3.generate_presigned_url(
             ClientMethod="get_object",
             Params={
                 "Bucket": S3_BUCKET,
@@ -159,7 +161,9 @@ def generate_presigned_logo_url():
             },
             ExpiresIn=3600  # 1 hour
         )
-        return url
     except Exception as e:
         print("Error generating pre-signed URL:", e)
         return None
+
+# ⭐ IMPORTANT: Generate signed URL once on startup
+SIGNED_LOGO_URL = generate_presigned_logo_url()
