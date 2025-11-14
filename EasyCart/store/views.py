@@ -1,12 +1,14 @@
-from django.shortcuts import render
 import boto3
+from django.shortcuts import render, redirect
 from django.conf import settings
+from django.contrib import messages
 
 # Home / Base view
 def base(request):
     return render(request, 'base.html')
 
 def home(request):
+    print("SESSION:", request.session.get("user_name"))
     return render(request, 'home.html')
 
 
@@ -17,44 +19,126 @@ cognito = boto3.client(
 
 def login_view(request):
     if request.method == "POST":
-        email = request.POST.get("email")
-        password = request.POST.get("password")
+        email = request.POST.get("email").strip()
+        password = request.POST.get("password").strip()
 
-        # Authenticate using email as username
-        user = authenticate(request, username=email, password=password)
+        client = boto3.client("cognito-idp", region_name=settings.COGNITO["region"])
 
-        if user is not None:
-            login(request, user)
-            messages.success(request, f"Welcome back, {user.first_name}!")
-            return redirect("base")
-        else:
-            messages.error(request, "Invalid email or password. Please try again.")
+        try:
+            # Attempt authentication
+            auth_response = client.admin_initiate_auth(
+                UserPoolId=settings.COGNITO["user_pool_id"],
+                ClientId=settings.COGNITO["app_client_id"],
+                AuthFlow="ADMIN_USER_PASSWORD_AUTH",
+                AuthParameters={
+                    "USERNAME": email,
+                    "PASSWORD": password
+                }
+            )
+
+        except client.exceptions.NotAuthorizedException:
+            messages.error(request, "Incorrect email or password.")
+            return redirect("login")
+
+        except client.exceptions.UserNotFoundException:
+            messages.error(request, "No account found with this email.")
+            return redirect("login")
+
+        except client.exceptions.UserNotConfirmedException:
+            # EVEN IF EMAIL IS NOT VERIFIED — we still fetch name and log in
+            messages.warning(request, "Email verification skipped (DEV mode).")
+            pass  # continue the flow
+
+        except Exception as e:
+            messages.error(request, f"Login failed: {str(e)}")
+            return redirect("login")
+
+        # -------------------------------------------------------
+        # FETCH USER DETAILS (ALWAYS)
+        # -------------------------------------------------------
+        user_details = client.admin_get_user(
+            UserPoolId=settings.COGNITO["user_pool_id"],
+            Username=email
+        )
+
+        full_name = email  # fallback
+        for attr in user_details["UserAttributes"]:
+            if attr["Name"] == "name":
+                full_name = attr["Value"]
+
+        # -------------------------------------------------------
+        # SAVE SESSION (ALWAYS)
+        # -------------------------------------------------------
+        request.session["user_email"] = email
+        request.session["user_name"] = full_name
+
+        # -------------------------------------------------------
+        # EMAIL VERIFICATION CHECK (DISABLED IN DEV LAB)
+        # -------------------------------------------------------
+        # for attr in user_details["UserAttributes"]:
+        #     if attr["Name"] == "email_verified" and attr["Value"] == "false":
+        #         messages.error(request, "Please verify your email before logging in.")
+        #         return redirect("login")
+
+        messages.success(request, f"Welcome, {full_name}!")
+        return redirect("home")
 
     return render(request, "login.html")
 
+
+
+def logout_view(request):
+    request.session.flush()
+    return redirect("home")
+    
 def register(request):
     if request.method == "POST":
-        email = request.POST.get("email")
+        name = request.POST.get("name").strip()
+        email = request.POST.get("email").strip()
         password = request.POST.get("password")
-        name = request.POST.get("name")
+
+        client = boto3.client("cognito-idp", region_name=settings.COGNITO["region"])
 
         try:
-            response = cognito.sign_up(
+            # Try to sign up user
+            response = client.sign_up(
                 ClientId=settings.COGNITO["app_client_id"],
                 Username=email,
                 Password=password,
                 UserAttributes=[
                     {"Name": "email", "Value": email},
-                    {"Name": "name", "Value": name}
-                ],
+                    {"Name": "name", "Value": name},
+                ]
             )
 
-            messages.success(request, "Account created! Please check your email for verification.")
+            # In Learner Lab email won't come, but this is OK
+            messages.success(
+                request,
+                "Account created! Please check your email for verification. "
+            )
             return redirect("login")
 
-        except cognito.exceptions.UsernameExistsException:
-            messages.error(request, "This email already exists.")
+        except client.exceptions.UsernameExistsException:
+            messages.error(request, "This email is already registered.")
+            return render(request, "register.html")
+
+        except client.exceptions.InvalidPasswordException as e:
+            messages.error(request,
+                "Password must contain uppercase, lowercase, digit, and a symbol."
+            )
+            return render(request, "register.html")
+
         except Exception as e:
-            messages.error(request, str(e))
+            # SES email limit will cause error -> show friendly message
+            if "ses" in str(e).lower() or "email" in str(e).lower():
+                messages.warning(
+                    request,
+                    "Account created, but verification email could not be delivered. "
+                )
+                return redirect("login")
+
+            messages.error(request, f"Error: {str(e)}")
+            return render(request, "register.html")
 
     return render(request, "register.html")
+
