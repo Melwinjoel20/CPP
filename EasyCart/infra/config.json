@@ -3,5 +3,6 @@
     "user_pool_id": "us-east-1_g6XvaXoRB",
     "app_client_id": "52obano77r6ev0rphajdrnn402",
     "domain_url": "https://easycart-1763060401.auth.us-east-1.amazoncognito.com",
-    "s3_logo_url": "images/EasyCartLogo.png"
+    "s3_logo_url": "images/EasyCartLogo.png",
+    "dev_mode": true
 }

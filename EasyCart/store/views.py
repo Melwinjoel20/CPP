@@ -23,17 +23,14 @@ def clear_messages(request):
         pass
 
 def login_view(request):
-    # Always clear previous messages when entering login page
-    clear_messages(request)
-    
     if request.method == "POST":
         email = request.POST.get("email").strip()
         password = request.POST.get("password").strip()
 
         client = boto3.client("cognito-idp", region_name=settings.COGNITO["region"])
 
+        # Try normal authentication
         try:
-            # Attempt authentication
             auth_response = client.admin_initiate_auth(
                 UserPoolId=settings.COGNITO["user_pool_id"],
                 ClientId=settings.COGNITO["app_client_id"],
@@ -53,40 +50,56 @@ def login_view(request):
             return redirect("login")
 
         except client.exceptions.UserNotConfirmedException:
-            # EVEN IF EMAIL IS NOT VERIFIED — we still fetch name and log in
-            messages.warning(request, "Email verification skipped (DEV mode).")
-            pass  # continue the flow
+            # ❗ This happens even with correct password in DEV environments
+            if settings.DEV_MODE:
+                messages.warning(request, "Email verification skipped (DEV mode).")
+
+                # Try AGAIN – if password is wrong, this WILL fail
+                try:
+                    auth_response = client.admin_initiate_auth(
+                        UserPoolId=settings.COGNITO["user_pool_id"],
+                        ClientId=settings.COGNITO["app_client_id"],
+                        AuthFlow="ADMIN_USER_PASSWORD_AUTH",
+                        AuthParameters={
+                            "USERNAME": email,
+                            "PASSWORD": password
+                        }
+                    )
+                except:
+                    messages.error(request, "Incorrect email or password.")
+                    return redirect("login")
+
+            else:
+                messages.error(request, "Please verify your email before logging in.")
+                return redirect("login")
 
         except Exception as e:
             messages.error(request, f"Login failed: {str(e)}")
             return redirect("login")
 
-        # -------------------------------------------------------
-        # FETCH USER DETAILS (ALWAYS)
-        # -------------------------------------------------------
-        user_details = client.admin_get_user(
+        # 🎉 If we reach here → password is 100% correct
+
+        # Fetch user details
+        user = client.admin_get_user(
             UserPoolId=settings.COGNITO["user_pool_id"],
             Username=email
         )
 
-        full_name = email  # fallback
-        for attr in user_details["UserAttributes"]:
+        full_name = None
+        for attr in user["UserAttributes"]:
             if attr["Name"] == "name":
                 full_name = attr["Value"]
 
-        # -------------------------------------------------------
-        # SAVE SESSION (ALWAYS)
-        # -------------------------------------------------------
+        # Save session
         request.session["user_email"] = email
         request.session["user_name"] = full_name
 
-        # -------------------------------------------------------
-        # EMAIL VERIFICATION CHECK (DISABLED IN DEV LAB)
-        # -------------------------------------------------------
-        # for attr in user_details["UserAttributes"]:
-        #     if attr["Name"] == "email_verified" and attr["Value"] == "false":
-        #         messages.error(request, "Please verify your email before logging in.")
-        #         return redirect("login")
+        # PROD MODE ONLY: verify email
+        if not settings.DEV_MODE:
+            for attr in user["UserAttributes"]:
+                if attr["Name"] == "email_verified" and attr["Value"] == "false":
+                    messages.error(request, "Please verify your email before logging in.")
+                    return redirect("login")
 
         messages.success(request, f"Welcome, {full_name}!")
         return redirect("home")
@@ -110,8 +123,8 @@ def register(request):
         client = boto3.client("cognito-idp", region_name=settings.COGNITO["region"])
 
         try:
-            # Try to sign up user
-            response = client.sign_up(
+            # Sign up
+            client.sign_up(
                 ClientId=settings.COGNITO["app_client_id"],
                 Username=email,
                 Password=password,
@@ -121,34 +134,33 @@ def register(request):
                 ]
             )
 
-            # In Learner Lab email won't come, but this is OK
-            messages.success(
-                request,
-                "Account created! Please check your email for verification. "
-            )
+            # DEV MODE → AUTO CONFIRM USER
+            if settings.DEV_MODE:
+                try:
+                    client.admin_confirm_sign_up(
+                        UserPoolId=settings.COGNITO["user_pool_id"],
+                        Username=email
+                    )
+                    messages.success(request, "Account created (DEV MODE AUTO-CONFIRMED). You can now login.")
+                except Exception as e:
+                    messages.warning(request, f"Auto-confirm skipped: {e}")
+            else:
+                messages.success(request, "Account created! Please check your email to verify your account.")
+
             return redirect("login")
 
         except client.exceptions.UsernameExistsException:
-            messages.error(request, "This email is already registered.")
-            return render(request, "register.html")
+            messages.error(request, "This email already exists.")
+            return redirect("register")
 
-        except client.exceptions.InvalidPasswordException as e:
-            messages.error(request,
-                "Password must contain uppercase, lowercase, digit, and a symbol."
-            )
-            return render(request, "register.html")
+        except client.exceptions.InvalidPasswordException:
+            messages.error(request, "Password must contain uppercase, lowercase, number, and symbol.")
+            return redirect("register")
 
         except Exception as e:
-            # SES email limit will cause error -> show friendly message
-            if "ses" in str(e).lower() or "email" in str(e).lower():
-                messages.warning(
-                    request,
-                    "Account created, but verification email could not be delivered. "
-                )
-                return redirect("login")
-
             messages.error(request, f"Error: {str(e)}")
-            return render(request, "register.html")
+            return redirect("register")
 
     return render(request, "register.html")
+
 

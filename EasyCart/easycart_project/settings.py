@@ -177,3 +177,5 @@ SIGNED_LOGO_URL = generate_presigned_logo_url()
 
 SESSION_ENGINE = "django.contrib.sessions.backends.db"
 
+
+DEV_MODE = infra_config.get("dev_mode", False)
