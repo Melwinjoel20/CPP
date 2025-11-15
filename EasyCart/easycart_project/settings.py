@@ -179,3 +179,5 @@ SESSION_ENGINE = "django.contrib.sessions.backends.db"
 
 
 DEV_MODE = infra_config.get("dev_mode", False)
+
+PRODUCT_TABLES = ["Phones", "Laptops", "Accessories"]

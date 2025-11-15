@@ -237,7 +237,38 @@
       <div class="collapse navbar-collapse justify-content-between" id="navbarContent">
         <ul class="navbar-nav me-auto mb-2 mb-lg-0">
           <li class="nav-item"><a class="nav-link navbar-link" href="{% url 'home' %}">Home</a></li>
-          <li class="nav-item"><a class="nav-link navbar-link" href="#">Products</a></li>
+          <li class="nav-item dropdown">
+            <a 
+                class="nav-link navbar-link dropdown-toggle" 
+                href="#" 
+                id="productsDropdown" 
+                role="button" 
+                data-bs-toggle="dropdown" 
+                aria-expanded="false"
+            >
+                Products
+            </a>
+          
+            <ul class="dropdown-menu shadow-sm" aria-labelledby="productsDropdown">
+          
+                <li>
+                  <a class="dropdown-item" href="{% url 'products' %}">All Products</a>
+                </li>
+          
+                <li><hr class="dropdown-divider"></li>
+          
+                {% for cat in categories %}
+                  <li>
+                    <a class="dropdown-item" href="{% url 'products' cat %}">
+                        {{ cat }}
+                    </a>
+                  </li>
+                {% endfor %}
+          
+            </ul>
+          </li>
+
+
           <li class="nav-item"><a class="nav-link navbar-link" href="#">Offers</a></li>
           <li class="nav-item"><a class="nav-link navbar-link" href="#">Contact</a></li>
           <li class="nav-item"><a class="nav-link navbar-link" href="#">My Cart</a></li>
