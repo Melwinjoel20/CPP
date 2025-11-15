@@ -162,5 +162,39 @@ def register(request):
             return redirect("register")
 
     return render(request, "register.html")
+    
 
+def get_all_categories():
+    return ["Phones", "Laptops", "Accessories"]  # Can be replaced with auto-detection later
 
+    
+
+def products(request, category=None):
+    categories = get_all_categories()
+
+    # DYNAMO ACCESS
+    dynamodb = boto3.resource("dynamodb", region_name=settings.COGNITO["region"])
+
+    items = []
+
+    if category:
+        if category not in categories:
+            messages.error(request, "Invalid category selected.")
+            return redirect("products")
+
+        table = dynamodb.Table(category)
+        response = table.scan()
+        items = response.get("Items", [])
+
+    else:
+        # Load ALL products from all tables
+        for cat in categories:
+            table = dynamodb.Table(cat)
+            response = table.scan()
+            items.extend(response.get("Items", []))
+
+    return render(request, "products.html", {
+        "products": items,
+        "category": category,
+        "categories": categories
+    })
