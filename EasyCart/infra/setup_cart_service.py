@@ -148,6 +148,37 @@ def enable_function_url(fn_name, region):
 
     print(f"✔ Function URL Enabled → {url}")
     return url
+    
+def create_orders_table(region):
+    dynamodb = boto3.client("dynamodb", region_name=region)
+    table_name = "Orders"
+
+    try:
+        dynamodb.describe_table(TableName=table_name)
+        print("✔ DynamoDB table already exists:", table_name)
+        return table_name
+    except ClientError:
+        pass
+
+    print("🛠 Creating DynamoDB table: Orders")
+
+    dynamodb.create_table(
+        TableName=table_name,
+        BillingMode="PAY_PER_REQUEST",
+        AttributeDefinitions=[
+            {"AttributeName": "order_id", "AttributeType": "S"}
+        ],
+        KeySchema=[
+            {"AttributeName": "order_id", "KeyType": "HASH"}
+        ]
+    )
+
+    waiter = dynamodb.get_waiter("table_exists")
+    waiter.wait(TableName=table_name)
+
+    print("✔ Orders table created")
+    return table_name
+
 
 
 
@@ -160,12 +191,16 @@ def main():
     # 1️⃣ Create DynamoDB table
     cart_table = create_cart_table(region)
     cfg["cart_table"] = cart_table
+    
+    orders_table = create_orders_table(region)
+    cfg["orders_table"] = orders_table
 
     # 2️⃣ Deploy Lambda functions
     lambdas = {
         "add_to_cart": "infra/lambda/add_to_cart.zip",
         "view_cart": "infra/lambda/view_cart.zip",
-        "remove_cart_item": "infra/lambda/remove_cart_item.zip"
+        "remove_cart_item": "infra/lambda/remove_cart_item.zip",
+        "place_order": "infra/lambda/place_order.zip"
     }
 
     lambda_urls = {}

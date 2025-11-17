@@ -239,3 +239,11 @@ def view_cart(request):
         "VIEW_CART_URL": lambda_cfg["view_cart"],
         "REMOVE_ITEM_URL": lambda_cfg["remove_cart_item"],
     })
+
+def checkout(request):
+    lambda_cfg = settings.COGNITO["lambda_cart_endpoints"]
+
+    return render(request, "checkout.html", {
+        "VIEW_CART_URL": lambda_cfg["view_cart"],
+        "PLACE_ORDER_URL": lambda_cfg["place_order"],
+    })

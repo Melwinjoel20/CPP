@@ -16,8 +16,10 @@
     ],
     "cart_table": "UserCart",
     "lambda_cart_endpoints": {
-        "add_to_cart": "https://fl76quruqmhozublnq2tvuimny0wmyzz.lambda-url.us-east-1.on.aws/",
-        "view_cart": "https://o73t22sywmytegh2iyu5dhli6i0bqpuz.lambda-url.us-east-1.on.aws/",
-        "remove_cart_item": "https://ujdnjure4xwsqkvd7lhbakrcsm0ibqvt.lambda-url.us-east-1.on.aws/"
-    }
+        "add_to_cart": "https://oppduidddykytyaw745adyqrzi0fhjrm.lambda-url.us-east-1.on.aws/",
+        "view_cart": "https://ohvw6jw7pawemfpklysgyi4wk40vhywn.lambda-url.us-east-1.on.aws/",
+        "remove_cart_item": "https://7m3m3qhozdtrhn3kjp65fyk3ea0cnbeq.lambda-url.us-east-1.on.aws/",
+        "place_order": "https://wzzsb2zgphwoe4gkb2p7bmn4ca0wgaak.lambda-url.us-east-1.on.aws/"
+    },
+    "orders_table": "Orders"
 }
