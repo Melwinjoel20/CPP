@@ -9,6 +9,7 @@ BUCKET_NAME = "easycart-proj-nci"
 s3 = boto3.client("s3", region_name=REGION)
 
 def create_bucket():
+    """Create S3 bucket + attach public-read policy (ACL-free)."""
     try:
         if REGION == "us-east-1":
             s3.create_bucket(Bucket=BUCKET_NAME)
@@ -24,6 +25,33 @@ def create_bucket():
             print(f"ℹ Bucket already exists: {BUCKET_NAME}")
         else:
             raise e
+
+    # ---------------------------------------------
+    # 📌 APPLY BUCKET POLICY (PUBLIC READ ACCESS)
+    # ---------------------------------------------
+    policy = {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Sid": "PublicRead",
+                "Effect": "Allow",
+                "Principal": "*",
+                "Action": "s3:GetObject",
+                "Resource": f"arn:aws:s3:::{BUCKET_NAME}/*"
+            }
+        ]
+    }
+
+    try:
+        s3.put_bucket_policy(
+            Bucket=BUCKET_NAME,
+            Policy=json.dumps(policy)
+        )
+        print("✔ Public-read bucket policy applied")
+
+    except Exception as e:
+        print(f"⚠ Could not set bucket policy: {e}")
+
 
 def logo_exists():
     object_key = "images/EasyCartLogo.png"

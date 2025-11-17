@@ -143,36 +143,36 @@ CONFIG_FILE = os.path.join(BASE_DIR, "infra", "config.json")
 with open(CONFIG_FILE) as f:
     infra_config = json.load(f)
 
-# Cognito settings
+# ====== Cognito ======
 COGNITO = {
     "region": infra_config.get("region"),
     "user_pool_id": infra_config.get("user_pool_id"),
     "app_client_id": infra_config.get("app_client_id"),
     "domain_url": infra_config.get("domain_url"),
+    # ⭐ add lambda cart endpoints here
+    "lambda_cart_endpoints": infra_config.get("lambda_cart_endpoints", {})
 }
 
-# S3 Settings
+# ====== S3 Settings ======
 S3_BUCKET = "easycart-proj-nci"
 S3_REGION = infra_config.get("region")
-S3_LOGO_KEY = infra_config.get("s3_logo_url")  # Already correct (images/EasyCartLogo.png)
+S3_LOGO_KEY = "images/EasyCartLogo.png"      # FIXED — must be an S3 key, not a URL
+
 
 def generate_presigned_logo_url():
     s3 = boto3.client("s3", region_name=S3_REGION)
-
     try:
         return s3.generate_presigned_url(
             ClientMethod="get_object",
-            Params={
-                "Bucket": S3_BUCKET,
-                "Key": S3_LOGO_KEY
-            },
-            ExpiresIn=3600  # 1 hour
+            Params={"Bucket": S3_BUCKET, "Key": S3_LOGO_KEY},
+            ExpiresIn=3600
         )
     except Exception as e:
-        print("Error generating pre-signed URL:", e)
-        return None
+        print("Error generating presigned URL:", e)
+        return ""
 
-# ⭐ IMPORTANT: Generate signed URL once on startup
+
+# (Optional) Generate once on startup
 SIGNED_LOGO_URL = generate_presigned_logo_url()
 
 SESSION_ENGINE = "django.contrib.sessions.backends.db"
