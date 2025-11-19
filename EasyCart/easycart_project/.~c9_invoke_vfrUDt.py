@@ -151,9 +151,7 @@ COGNITO = {
     "domain_url": infra_config.get("domain_url"),
     # ⭐ add lambda cart endpoints here
     "lambda_cart_endpoints": infra_config.get("lambda_cart_endpoints", {}),
-    "rate_limit": infra_config.get("rate_limit", {}),
-    "Rate_limit_table": infra_config.get("RATE_LIMIT_TABLE", {})
-
+    "rate_limit": infra_config.get("rate_limit", {})
     
 }
 
@@ -188,5 +186,3 @@ PRODUCT_TABLES = ["Phones", "Laptops", "Accessories"]
 
 RATE_LIMIT_LOGIN_LIMIT = COGNITO["rate_limit"]["login"]["limit"]
 RATE_LIMIT_LOGIN_WINDOW = COGNITO["rate_limit"]["login"]["window"]
-
-RATE_LIMIT_TABLE = infra_config.get("RATE_LIMIT_TABLE", "RateLimits")

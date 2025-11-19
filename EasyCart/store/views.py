@@ -3,6 +3,7 @@ from django.shortcuts import render, redirect
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.messages import get_messages
+from easycart_rate_limiter import check_rate_limit
 
 # Home / Base view
 def base(request):
@@ -26,6 +27,22 @@ def login_view(request):
     if request.method == "POST":
         email = request.POST.get("email").strip()
         password = request.POST.get("password").strip()
+        
+        key = f"login:{email}"   # per-user rate limit
+
+        allowed = check_rate_limit(
+            key,
+            limit=settings.RATE_LIMIT_LOGIN_LIMIT,
+            window=settings.RATE_LIMIT_LOGIN_WINDOW
+        )
+
+        if not allowed:
+            messages.error(
+                request,
+                "Too many failed login attempts. Try again in 1 minute."
+            )
+            return redirect("login")
+
 
         client = boto3.client("cognito-idp", region_name=settings.COGNITO["region"])
 
@@ -247,3 +264,12 @@ def checkout(request):
         "VIEW_CART_URL": lambda_cfg["view_cart"],
         "PLACE_ORDER_URL": lambda_cfg["place_order"],
     })
+
+def order_confirmation(request):
+    order_id = request.GET.get("id")
+
+    return render(request, "order_confirmation.html", {
+        "order_id": order_id
+    })
+
+

@@ -47,47 +47,90 @@ def create_cart_table(region):
     return table_name
 
 
-def create_lambda(region, fn_name, file_path):
-    lambda_client = boto3.client("lambda", region_name=region)
+def create_lambda(region, fn_name, file_path, sns_topic_arn=None):
+    import zipfile
+    import io
 
+    lambda_client = boto3.client("lambda", region_name=region)
     role_arn = "arn:aws:iam::730335531611:role/LabRole"
 
-    with open(file_path, "rb") as f:
-        zip_bytes = f.read()
+    # If this lambda needs SNS injection (place_order only)
+    if sns_topic_arn:
+        # Read the original lambda_function.py (NOT the ZIP)
+        lambda_folder = file_path.replace(".zip", "")
+        lambda_py = os.path.join(lambda_folder, "lambda_function.py")
+        code_text = open(lambda_py).read()
 
-    # Check if Lambda exists
+        # Inject SNS topic
+        code_text = code_text.replace("{{SNS_TOPIC_ARN}}", sns_topic_arn)
+
+        # Create ZIP in memory
+        zip_buffer = io.BytesIO()
+        with zipfile.ZipFile(zip_buffer, "w") as z:
+            z.writestr("lambda_function.py", code_text)
+        zip_bytes = zip_buffer.getvalue()
+
+    else:
+        # Other lambdas → use normal ZIP
+        with open(file_path, "rb") as f:
+            zip_bytes = f.read()
+
+    # Deploy lambda (update or create)
     try:
         lambda_client.get_function(FunctionName=fn_name)
         print(f"✔ Lambda exists: {fn_name}")
 
-        # ⭐ IMPORTANT: Update existing Lambda code
         lambda_client.update_function_code(
             FunctionName=fn_name,
             ZipFile=zip_bytes,
             Publish=True
         )
         print(f"🔄 Updated Lambda code for {fn_name}")
-
         return fn_name
 
     except lambda_client.exceptions.ResourceNotFoundException:
-        pass
+        print(f"🛠 Creating Lambda: {fn_name}")
+        lambda_client.create_function(
+            FunctionName=fn_name,
+            Runtime="python3.9",
+            Role=role_arn,
+            Handler="lambda_function.lambda_handler",
+            Code={"ZipFile": zip_bytes},
+            Timeout=15,
+            Publish=True
+        )
+        print(f"✔ Lambda created: {fn_name}")
+        return fn_name
+        # ⭐ AFTER creating or updating Lambda code
+        lambda_client.update_function_configuration(
+            FunctionName=fn_name,
+            Environment={
+                "Variables": {
+                    "SNS_TOPIC_ARN": cfg.get("sns_topic_arn", "")
+                }
+            }
+        )
+        print(f"🔧 Added environment variable SNS_TOPIC_ARN to {fn_name}")
+        return fn_name
 
-    # Create Lambda if does not exist
-    print(f"🛠 Creating Lambda: {fn_name}")
+def update_lambda_env(region, fn_name, topic_arn):
+    lambda_client = boto3.client("lambda", region_name=region)
 
-    lambda_client.create_function(
+    # 🕒 Wait until Lambda update is finished
+    waiter = lambda_client.get_waiter("function_updated")
+    waiter.wait(FunctionName=fn_name)
+
+    # Now safe to update environment variables
+    lambda_client.update_function_configuration(
         FunctionName=fn_name,
-        Runtime="python3.9",
-        Role=role_arn,
-        Handler="lambda_function.lambda_handler",
-        Code={"ZipFile": zip_bytes},
-        Timeout=15,
-        Publish=True
+        Environment={
+            "Variables": {
+                "SNS_TOPIC_ARN": topic_arn
+            }
+        }
     )
 
-    print(f"✔ Lambda created: {fn_name}")
-    return fn_name
+    print(f"✔ Environment variable added to {fn_name}")
 
 
 def enable_function_url(fn_name, region):
@@ -179,7 +222,26 @@ def create_orders_table(region):
     print("✔ Orders table created")
     return table_name
 
+def create_sns_topic(region):
+    sns = boto3.client("sns", region_name=region)
+    resp = sns.create_topic(Name="EasyCartOrderNotifications")
+    print("✔ SNS Topic:", resp["TopicArn"])
+    return resp["TopicArn"]
+    
 
+
+def subscribe_email_to_sns(region, topic_arn, email):
+    sns = boto3.client("sns", region_name=region)
+    
+    resp = sns.subscribe(
+        TopicArn=topic_arn,
+        Protocol="email",
+        Endpoint=email,
+        ReturnSubscriptionArn=False
+    )
+    
+    print(f"✔ Subscription request sent to {email}")
+    print("⚠️ NOTE: Email owner must click confirm link once (AWS requirement)")
 
 
 def main():
@@ -194,6 +256,15 @@ def main():
     
     orders_table = create_orders_table(region)
     cfg["orders_table"] = orders_table
+    
+    topic_arn = create_sns_topic(region)
+    cfg["sns_topic_arn"] = topic_arn
+    save_config(cfg)
+    
+    email_to_subscribe = "melwinpintoir@gmail.com"  # your email
+
+    subscribe_email_to_sns(region, topic_arn, email_to_subscribe)
+
 
     # 2️⃣ Deploy Lambda functions
     lambdas = {
@@ -210,6 +281,12 @@ def main():
         create_lambda(region, fn_name, path)
         url = enable_function_url(fn_name, region)
         lambda_urls[name] = url
+    
+        # ⭐ Add ENV only for place_order
+        if name == "place_order":
+            update_lambda_env(region, fn_name, topic_arn)
+
+
 
     cfg["lambda_cart_endpoints"] = lambda_urls
     save_config(cfg)

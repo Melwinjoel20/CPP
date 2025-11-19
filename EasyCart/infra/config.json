@@ -16,10 +16,18 @@
     ],
     "cart_table": "UserCart",
     "lambda_cart_endpoints": {
-        "add_to_cart": "https://oppduidddykytyaw745adyqrzi0fhjrm.lambda-url.us-east-1.on.aws/",
-        "view_cart": "https://ohvw6jw7pawemfpklysgyi4wk40vhywn.lambda-url.us-east-1.on.aws/",
-        "remove_cart_item": "https://7m3m3qhozdtrhn3kjp65fyk3ea0cnbeq.lambda-url.us-east-1.on.aws/",
-        "place_order": "https://wzzsb2zgphwoe4gkb2p7bmn4ca0wgaak.lambda-url.us-east-1.on.aws/"
+        "add_to_cart": "https://cctbw66algawnxngjzpfswawla0ahdyd.lambda-url.us-east-1.on.aws/",
+        "view_cart": "https://yoqs4lmnkutdk6dpmuvvljvifq0uclvs.lambda-url.us-east-1.on.aws/",
+        "remove_cart_item": "https://dlxvwoeya4fqjou27rir5xhd740xcerf.lambda-url.us-east-1.on.aws/",
+        "place_order": "https://qcedkfmfccfy6nsffrjzgferoe0ylgtr.lambda-url.us-east-1.on.aws/"
     },
-    "orders_table": "Orders"
+    "orders_table": "Orders",
+    "sns_topic_arn": "arn:aws:sns:us-east-1:730335531611:EasyCartOrderNotifications",
+    "rate_limit": {
+        "login": {
+            "limit": 5,
+            "window": 60
+        }
+    },
+    "RATE_LIMIT_TABLE":"RateLimits"
 }
