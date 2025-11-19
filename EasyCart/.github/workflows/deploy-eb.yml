@@ -1,0 +1,73 @@
+name: Deploy to Elastic Beanstalk (DEV)
+
+# Trigger on pushes to main (change branch if you use another)
+on:
+  push:
+    branches: [ "main" ]
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC assume role)
+        uses: aws-actions/configure-aws-credentials@v3
+        with:
+          role-to-assume: arn:aws:iam::730335531611:role/GitHubActions-EB-Role
+          aws-region: us-east-1
+
+      - name: Install zip (needed on runner)
+        run: sudo apt-get update && sudo apt-get install -y zip
+
+      - name: Create deployment bundle
+        run: |
+          # Create zip of repository root, exclude virtualenv, git and GitHub Actions files
+          zip -r app.zip . -x ".git/*" "venv/*" ".venv/*" "__pycache__/*" ".github/*"
+
+      - name: Upload bundle to S3 and create application version
+        env:
+          S3_BUCKET: "elasticbeanstalk-us-east-1-730335531611"
+          APP_NAME: "easycart-app-ebs"
+          VERSION_LABEL: "github-${{ github.sha }}"
+        run: |
+          aws s3 cp app.zip s3://$S3_BUCKET/$VERSION_LABEL.zip
+          aws elasticbeanstalk create-application-version \
+            --application-name "$APP_NAME" \
+            --version-label "$VERSION_LABEL" \
+            --source-bundle S3Bucket="$S3_BUCKET",S3Key="$VERSION_LABEL.zip"
+
+      - name: Deploy application version to EB environment
+        env:
+          ENV_NAME: "Easycart-app-ebs-env"
+          VERSION_LABEL: "github-${{ github.sha }}"
+        run: |
+          aws elasticbeanstalk update-environment \
+            --environment-name "$ENV_NAME" \
+            --version-label "$VERSION_LABEL"
+
+      - name: Wait for environment to become green (up to 15 min)
+        env:
+          ENV_NAME: "Easycart-app-ebs-env"
+        run: |
+          echo "Waiting for environment to be healthy (Green/Ok)..."
+          end=$((SECONDS + 900))
+          while [ $SECONDS -lt $end ]; do
+            status=$(aws elasticbeanstalk describe-environments --environment-names "$ENV_NAME" --query "Environments[0].Health" --output text)
+            echo "Current health: $status"
+            if [ "$status" = "Green" ] || [ "$status" = "Ok" ]; then
+              echo "Environment healthy: $status"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "Timed out waiting for environment to become healthy"
+          aws elasticbeanstalk describe-environments --environment-names "$ENV_NAME" --output json
+          exit 1
