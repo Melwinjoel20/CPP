@@ -1,46 +1,55 @@
 import json
 import boto3
-from boto3.dynamodb.conditions import Key
+from boto3.dynamodb.conditions import Attr
 
 dynamodb = boto3.resource("dynamodb")
 table = dynamodb.Table("UserCart")
 
-def lambda_handler(event, context):
 
-    body = json.loads(event["body"])
+def _cors_headers():
+    return {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET,POST,DELETE,OPTIONS",
+        "Access-Control-Allow-Headers": "*",
+        "Content-Type": "application/json",
+    }
+
+
+def lambda_handler(event, context):
+    print("Incoming event:", json.dumps(event))
+
+    # Detect method (v2 - API GW HTTP API or v1)
+    method = (
+        event.get("requestContext", {})
+             .get("http", {})
+             .get("method")
+        or event.get("httpMethod", "")
+    ).upper()
+
+    # 0️⃣ OPTIONS preflight
+    if method == "OPTIONS":
+        return {
+            "statusCode": 204,
+            "headers": _cors_headers(),
+            "body": ""
+        }
+
+    # 1️⃣ Parse body safely
+    body_str = event.get("body") or "{}"
+    try:
+        body = json.loads(body_str)
+    except:
+        body = {}
 
     item_id = body.get("item_id")
+
     if not item_id:
         return {
             "statusCode": 400,
+            "headers": _cors_headers(),
             "body": json.dumps({"error": "item_id is required"})
         }
 
-    # 1️⃣ Find which user_id this item belongs to
+    # 2️⃣ Scan because item_id is NOT the partition key
     response = table.scan(
-        FilterExpression=Key("item_id").eq(item_id)
-    )
-
-    items = response.get("Items", [])
-
-    if not items:
-        return {
-            "statusCode": 404,
-            "body": json.dumps({"error": "Item not found"})
-        }
-
-    record = items[0]
-    user_id = record["user_id"]
-
-    # 2️⃣ Now delete using both keys
-    table.delete_item(
-        Key={
-            "user_id": user_id,
-            "item_id": item_id
-        }
-    )
-
-    return {
-        "statusCode": 200,
-        "body": json.dumps({"message": "Item removed"})
-    }
+        FilterExpression=Attr("item_id").eq(item_id)
