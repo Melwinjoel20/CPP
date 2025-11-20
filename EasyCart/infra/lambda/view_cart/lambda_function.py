@@ -18,32 +18,58 @@ def clean_decimal(obj):
     return obj
 
 
-def lambda_handler(event, context):
+def _cors_headers():
+    return {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+        "Access-Control-Allow-Headers": "*",
+        "Content-Type": "application/json",
+    }
 
-    # Get query string params safely
+
+def lambda_handler(event, context):
+    print("Incoming event:", json.dumps(event))
+
+    # Detect method (HTTP API v2 or REST)
+    method = (
+        (event.get("requestContext", {}) or {})
+        .get("http", {})
+        .get("method")
+        or event.get("httpMethod", "")
+    ).upper()
+
+    # 0️⃣ Handle preflight
+    if method == "OPTIONS":
+        return {
+            "statusCode": 204,
+            "headers": _cors_headers(),
+            "body": ""
+        }
+
+    # 1️⃣ Get query string params safely
     params = event.get("queryStringParameters") or {}
     user_id = params.get("user_id")
 
-    # ✅ Block if user_id is missing → treat as not logged in
+    # 2️⃣ Block if user_id is missing → treat as not logged in
     if not user_id:
         return {
             "statusCode": 401,
-            "headers": {"Content-Type": "application/json"},
+            "headers": _cors_headers(),
             "body": json.dumps({"message": "Please log in to view your cart."})
         }
 
-    # Only logged-in users reach here
+    # 3️⃣ Only logged-in users reach here
     response = table.scan(
         FilterExpression=Attr("user_id").eq(user_id)
     )
 
     items = response.get("Items", [])
 
-    # Convert Decimal -> float for JSON
+    # 4️⃣ Convert Decimal -> float for JSON
     items = clean_decimal(items)
 
     return {
         "statusCode": 200,
-        "headers": {"Content-Type": "application/json"},
+        "headers": _cors_headers(),
         "body": json.dumps(items)
     }
