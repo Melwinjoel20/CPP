@@ -20,26 +20,30 @@ def clean_decimal(obj):
 
 def lambda_handler(event, context):
 
+    # Get query string params safely
     params = event.get("queryStringParameters") or {}
     user_id = params.get("user_id")
 
+    # ✅ Block if user_id is missing → treat as not logged in
     if not user_id:
         return {
-            "statusCode": 400,
-            "body": json.dumps({"error": "user_id is required"})
+            "statusCode": 401,
+            "headers": {"Content-Type": "application/json"},
+            "body": json.dumps({"message": "Please log in to view your cart."})
         }
 
-    # Your UserCart table likely has NO sort key -> use scan
+    # Only logged-in users reach here
     response = table.scan(
         FilterExpression=Attr("user_id").eq(user_id)
     )
 
     items = response.get("Items", [])
 
-    # Convert Decimal -> float
+    # Convert Decimal -> float for JSON
     items = clean_decimal(items)
 
     return {
         "statusCode": 200,
+        "headers": {"Content-Type": "application/json"},
         "body": json.dumps(items)
     }

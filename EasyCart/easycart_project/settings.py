@@ -26,12 +26,12 @@ SECRET_KEY = 'django-insecure-m1(g%mz7^2kj(8%qwqc!lfhs1d)u-#==m-00&9#^!ckp3!e&3z
 DEBUG = True
 
 ALLOWED_HOSTS = [
-    '79598be562514c25bb443db7a0a15de2.vfs.cloud9.us-east-1.amazonaws.com',
+    '736b429f071c44fdabd7b5bd97020c4c.vfs.cloud9.us-east-1.amazonaws.com',
     'localhost',
     '127.0.0.1'
     ]
 CSRF_TRUSTED_ORIGINS = [
-    "https://79598be562514c25bb443db7a0a15de2.vfs.cloud9.us-east-1.amazonaws.com"
+    "https://736b429f071c44fdabd7b5bd97020c4c.vfs.cloud9.us-east-1.amazonaws.com"
 ]
 
 

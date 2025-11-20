@@ -1,8 +1,8 @@
 {
     "region": "us-east-1",
-    "user_pool_id": "us-east-1_g6XvaXoRB",
-    "app_client_id": "52obano77r6ev0rphajdrnn402",
-    "domain_url": "https://easycart-1763060401.auth.us-east-1.amazoncognito.com",
+    "user_pool_id": "us-east-1_88RaH8xvI",
+    "app_client_id": "12p9trmd5eur7ksq34ui2k855p",
+    "domain_url": "https://easycart-1763633794.auth.us-east-1.amazoncognito.com",
     "s3_logo_url": "https://easycart-proj-nci.s3.us-east-1.amazonaws.com/images/EasyCartLogo.png",
     "dev_mode": true,
     "bucket_name": "easycart-proj-nci",
@@ -16,18 +16,18 @@
     ],
     "cart_table": "UserCart",
     "lambda_cart_endpoints": {
-        "add_to_cart": "https://cctbw66algawnxngjzpfswawla0ahdyd.lambda-url.us-east-1.on.aws/",
-        "view_cart": "https://yoqs4lmnkutdk6dpmuvvljvifq0uclvs.lambda-url.us-east-1.on.aws/",
-        "remove_cart_item": "https://dlxvwoeya4fqjou27rir5xhd740xcerf.lambda-url.us-east-1.on.aws/",
-        "place_order": "https://qcedkfmfccfy6nsffrjzgferoe0ylgtr.lambda-url.us-east-1.on.aws/"
+        "add_to_cart": "https://fj6pwyisu4735wd6t62hwot3mi0ojusm.lambda-url.us-east-1.on.aws/",
+        "view_cart": "https://mw33vgeu752mzvljwrk6wnelnq0ekqcf.lambda-url.us-east-1.on.aws/",
+        "remove_cart_item": "https://xga3hk625ehtovkawl7fw5xamu0tmozx.lambda-url.us-east-1.on.aws/",
+        "place_order": "https://twqmdadaprp4xjw6xuskqegeoe0qaeyh.lambda-url.us-east-1.on.aws/"
     },
     "orders_table": "Orders",
-    "sns_topic_arn": "arn:aws:sns:us-east-1:730335531611:EasyCartOrderNotifications",
+    "sns_topic_arn": "arn:aws:sns:us-east-1:928302362931:EasyCartOrderNotifications",
     "rate_limit": {
         "login": {
             "limit": 5,
             "window": 60
         }
     },
-    "RATE_LIMIT_TABLE":"RateLimits"
+    "RATE_LIMIT_TABLE": "RateLimits"
 }

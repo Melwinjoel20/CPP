@@ -71,14 +71,29 @@
 {% block extra_scripts %}
 <script>
 const ADD_TO_CART_URL = "{{ ADD_TO_CART_URL }}";
+const LOGIN_URL = "{% url 'login' %}";
+
+// ✅ This will become true if request.session["user_id"] exists
+const IS_LOGGED_IN = {% if request.session.user_id %}true{% else %}false{% endif %};
 
 document.addEventListener("click", async (e) => {
     if (!e.target.classList.contains("add-to-cart-btn")) return;
 
     const btn = e.target;
 
+    // ✅ If not logged in: stop and send to login page
+    if (!IS_LOGGED_IN) {
+        alert("Please log in to add items to your cart.");
+
+        // Optional: keep current page as ?next= so you can redirect back after login
+        const nextUrl = window.location.pathname + window.location.search;
+        window.location.href = LOGIN_URL + "?next=" + encodeURIComponent(nextUrl);
+        return;
+    }
+
+    // ✅ Only logged-in users reach here
     const payload = {
-        user_id: "{{ request.session.user_id|default:'guest123' }}",
+        user_id: "{{ request.session.user_id }}",  // no more guest123
         product_id: btn.dataset.productId,
         name: btn.dataset.name,
         price: parseFloat(btn.dataset.price),
@@ -107,3 +122,4 @@ document.addEventListener("click", async (e) => {
 });
 </script>
 {% endblock %}
+

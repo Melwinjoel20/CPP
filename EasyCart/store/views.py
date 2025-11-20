@@ -110,6 +110,8 @@ def login_view(request):
         # Save session
         request.session["user_email"] = email
         request.session["user_name"] = full_name
+        request.session["user_id"] = email  
+
 
         # PROD MODE ONLY: verify email
         if not settings.DEV_MODE:

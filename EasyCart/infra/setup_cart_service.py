@@ -52,7 +52,7 @@ def create_lambda(region, fn_name, file_path, sns_topic_arn=None):
     import io
 
     lambda_client = boto3.client("lambda", region_name=region)
-    role_arn = "arn:aws:iam::730335531611:role/LabRole"
+    role_arn = "arn:aws:iam::928302362931:role/LabRole"
 
     # If this lambda needs SNS injection (place_order only)
     if sns_topic_arn:
