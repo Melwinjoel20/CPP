@@ -46,11 +46,19 @@ def lambda_handler(event, context):
             "body": ""
         }
 
-    # 1️⃣ Get query string params safely
+    # 1️⃣ Try query string first
     params = event.get("queryStringParameters") or {}
     user_id = params.get("user_id")
 
-    # 2️⃣ Block if user_id is missing → treat as not logged in
+    # 2️⃣ Fallback: some mappings put user_id in the body
+    if not user_id and event.get("body"):
+        try:
+            body = json.loads(event["body"] or "{}")
+        except (TypeError, json.JSONDecodeError):
+            body = {}
+        user_id = body.get("user_id")
+
+    # 3️⃣ Block if still missing → not logged in
     if not user_id:
         return {
             "statusCode": 401,
@@ -58,14 +66,14 @@ def lambda_handler(event, context):
             "body": json.dumps({"message": "Please log in to view your cart."})
         }
 
-    # 3️⃣ Only logged-in users reach here
+    # 4️⃣ Only logged-in users reach here
     response = table.scan(
         FilterExpression=Attr("user_id").eq(user_id)
     )
 
     items = response.get("Items", [])
 
-    # 4️⃣ Convert Decimal -> float for JSON
+    # 5️⃣ Convert Decimal -> float for JSON
     items = clean_decimal(items)
 
     return {
