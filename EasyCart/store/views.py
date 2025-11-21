@@ -10,6 +10,7 @@ def base(request):
     return render(request, 'base.html')
 
 def home(request):
+    
     return render(request, 'home.html')
 
 
@@ -213,7 +214,37 @@ def generate_presigned_image_url(key: str):
 
 
 def products(request, category=None):
-    categories = get_all_categories()
+    categories = get_all_categories()  
+    # Example: ["Accessories", "Laptops", "Phones"]
+
+    # ---------------------------
+    # 🔍 SEARCH LOGIC (NEW PART)
+    # ---------------------------
+    search = request.GET.get("search", "").strip().lower()
+
+    if search:
+        keyword_map = {
+            "Accessories": ["accessory", "accessories", "earphone", "earphones", "headphones", "charger"],
+            "Laptops": ["laptop", "laptops", "notebook", "macbook"],
+            "Phones": ["phone", "phones", "mobile", "smartphone"],
+        }
+
+        matched_category = None
+
+        for table_name, words in keyword_map.items():
+            if any(w in search for w in words):
+                matched_category = table_name
+                break
+
+        # If search matched → override the category and load that table
+        if matched_category:
+            category = matched_category
+        else:
+            category = None   # show ALL products
+
+    # ---------------------------
+    # EXISTING CODE CONTINUES
+    # ---------------------------
 
     dynamodb = boto3.resource("dynamodb", region_name=settings.COGNITO["region"])
     items = []
@@ -227,30 +258,26 @@ def products(request, category=None):
         response = table.scan()
         items = response.get("Items", [])
     else:
-        # all products from all tables
         for cat in categories:
             table = dynamodb.Table(cat)
             response = table.scan()
             items.extend(response.get("Items", []))
 
-    # attach presigned URLs
     for item in items:
         key = item.get("image")
         item["image_url"] = generate_presigned_image_url(key) if key else None
 
-    # ⭐ Load Lambda URLs from config.json
     lambda_cfg = settings.COGNITO["lambda_cart_endpoints"]
 
     return render(request, "products.html", {
         "products": items,
         "category": category,
         "categories": categories,
-
         "ADD_TO_CART_URL": lambda_cfg["add_to_cart"],
         "VIEW_CART_URL": lambda_cfg["view_cart"],
         "REMOVE_ITEM_URL": lambda_cfg["remove_cart_item"],
     })
-    
+
 def view_cart(request):
     lambda_cfg = settings.COGNITO["lambda_cart_endpoints"]
 
