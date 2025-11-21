@@ -13,6 +13,10 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    defaults:
+      run:
+        working-directory: EasyCart   # 👈 all run: steps now happen inside EasyCart
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -20,40 +24,32 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'  # change if you use a different version
-
-      - name: Cache pip
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
+          python-version: '3.11'
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          pip install -r requirements.txt   # 👈 now uses EasyCart/requirements.txt
 
-      # Optional: run Django tests / pytest
-      - name: Run tests
+      - name: Run tests (optional)
         run: |
           if [ -f manage.py ]; then
             python manage.py test
           else
-            echo "No manage.py found, skipping Django tests."
+            echo "No manage.py found, skipping tests."
           fi
 
-      - name: Install zip (needed on runner)
+      - name: Install zip
         run: sudo apt-get update && sudo apt-get install -y zip
 
       - name: Create deployment bundle
+        # we zip the contents of EasyCart only
         run: |
           zip -r app.zip . \
-            -x ".git/*" "venv/*" ".venv/*" "__pycache__/*" ".github/*"
+            -x "env/*" "__pycache__/*" ".git/*" ".github/*"
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
           name: easycart-app-zip
-          path: app.zip
+          path: EasyCart/app.zip
