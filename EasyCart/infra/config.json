@@ -16,10 +16,10 @@
     ],
     "cart_table": "UserCart",
     "lambda_cart_endpoints": {
-        "add_to_cart": "https://fj6pwyisu4735wd6t62hwot3mi0ojusm.lambda-url.us-east-1.on.aws/",
-        "view_cart": "https://mw33vgeu752mzvljwrk6wnelnq0ekqcf.lambda-url.us-east-1.on.aws/",
-        "remove_cart_item": "https://xga3hk625ehtovkawl7fw5xamu0tmozx.lambda-url.us-east-1.on.aws/",
-        "place_order": "https://twqmdadaprp4xjw6xuskqegeoe0qaeyh.lambda-url.us-east-1.on.aws/"
+        "add_to_cart": "https://344gww43b9.execute-api.us-east-1.amazonaws.com/add-to-cart",
+        "view_cart": "https://344gww43b9.execute-api.us-east-1.amazonaws.com/view-cart",
+        "remove_cart_item": "https://344gww43b9.execute-api.us-east-1.amazonaws.com/remove-cart-item",
+        "place_order": "https://344gww43b9.execute-api.us-east-1.amazonaws.com/place-order"
     },
     "orders_table": "Orders",
     "sns_topic_arn": "arn:aws:sns:us-east-1:928302362931:EasyCartOrderNotifications",

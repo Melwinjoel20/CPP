@@ -38,14 +38,54 @@ def to_decimal(obj):
     return obj
 
 
-def lambda_handler(event, context):
+def _cors_headers():
+    return {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+        "Access-Control-Allow-Headers": "*",
+        "Content-Type": "application/json",
+    }
 
-    body = json.loads(event["body"])
+
+def lambda_handler(event, context):
+    # Optional: log event for debugging
+    print("Incoming event:", json.dumps(event))
+
+    # Safely detect method (HTTP API v2 or REST API)
+    method = (
+        (event.get("requestContext", {}) or {})
+        .get("http", {})
+        .get("method")
+        or event.get("httpMethod", "")
+    ).upper()
+
+    # 0️⃣ Handle CORS preflight
+    if method == "OPTIONS":
+        return {
+            "statusCode": 204,
+            "headers": _cors_headers(),
+            "body": ""
+        }
+
+    # 1️⃣ Parse body safely
+    body_str = event.get("body") or "{}"
+    try:
+        body = json.loads(body_str)
+    except (TypeError, json.JSONDecodeError):
+        body = {}
+
     user_id = body.get("user_id")
-    customer = body.get("customer")
+    customer = body.get("customer") or {}
     payment_method = body.get("payment_method", "card")
 
-    # ⬅ 1. Load items from cart
+    if not user_id:
+        return {
+            "statusCode": 400,
+            "headers": _cors_headers(),
+            "body": json.dumps({"error": "user_id is required"})
+        }
+
+    # 2️⃣ Load items from cart
     cart_response = cart_table.scan(
         FilterExpression=Attr("user_id").eq(user_id)
     )
@@ -55,20 +95,21 @@ def lambda_handler(event, context):
     if not items:
         return {
             "statusCode": 400,
+            "headers": _cors_headers(),
             "body": json.dumps({"error": "Cart is empty"})
         }
 
-    # ⬅ 2. Calculate total
-    total = sum(i["price"] * i.get("qty", 1) for i in items)
+    # 3️⃣ Calculate total
+    total = sum(i.get("price", 0) * i.get("qty", 1) for i in items)
 
-    # ⬅ 3. Create Order ID
+    # 4️⃣ Create Order ID
     order_id = str(uuid.uuid4())
 
-    # ⬅ 4. Convert for DynamoDB
+    # 5️⃣ Convert for DynamoDB
     items_dynamo = to_decimal(items)
     total_dynamo = Decimal(str(total))
 
-    # ⬅ 5. Save order
+    # 6️⃣ Save order
     orders_table.put_item(
         Item={
             "order_id": order_id,
@@ -82,37 +123,27 @@ def lambda_handler(event, context):
         }
     )
 
-    # ⬅ 6. Clear cart after order
+    # 7️⃣ Clear cart after order
     for item in items:
         cart_table.delete_item(
             Key={"user_id": user_id, "item_id": item["item_id"]}
         )
 
-    # ⬅ 7. SNS subscribe customer email if not already subscribed
+    # 8️⃣ SNS: subscribe or notify customer
     customer_email = customer.get("email")
 
     if SNS_TOPIC_ARN and customer_email:
-
-        # 1. Get all subscriptions for the topic
         subs = sns.list_subscriptions_by_topic(TopicArn=SNS_TOPIC_ARN)
+        existing = any(s["Endpoint"] == customer_email
+                       for s in subs.get("Subscriptions", []))
 
-        # 2. Check if the email is already subscribed
-        existing = False
-        for s in subs.get("Subscriptions", []):
-            if s["Endpoint"] == customer_email:
-                existing = True
-                break
-
-        # 3. If NOT subscribed → subscribe automatically
         if not existing:
             sns.subscribe(
                 TopicArn=SNS_TOPIC_ARN,
                 Protocol="email",
                 Endpoint=customer_email
             )
-
-        # 4. If already subscribed → send order email
-        if existing:
+        else:
             sns.publish(
                 TopicArn=SNS_TOPIC_ARN,
                 Subject="EasyCart Order Confirmation",
@@ -125,10 +156,10 @@ def lambda_handler(event, context):
                 )
             )
 
-
-    # ⬅ 8. Return response to frontend
+    # 9️⃣ Response to frontend
     return {
         "statusCode": 200,
+        "headers": _cors_headers(),
         "body": json.dumps({
             "message": "Order placed successfully",
             "order_id": order_id
