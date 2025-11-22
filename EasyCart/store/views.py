@@ -134,16 +134,26 @@ def logout_view(request):
     messages.success(request, "You have been logged out.")
     return redirect("login")
     
+import boto3
+from django.conf import settings
+from django.shortcuts import render, redirect
+from django.contrib import messages
+
+
 def register(request):
     if request.method == "POST":
-        name = request.POST.get("name").strip()
-        email = request.POST.get("email").strip()
+        name = request.POST.get("name", "").strip()
+        email = request.POST.get("email", "").strip()
         password = request.POST.get("password")
+
+        if not (name and email and password):
+            messages.error(request, "Please fill in all fields.")
+            return redirect("register")
 
         client = boto3.client("cognito-idp", region_name=settings.COGNITO["region"])
 
         try:
-            # Sign up
+            # 1️⃣ Sign up (this triggers OTP email if verification is enabled on the user pool)
             client.sign_up(
                 ClientId=settings.COGNITO["app_client_id"],
                 Username=email,
@@ -151,30 +161,44 @@ def register(request):
                 UserAttributes=[
                     {"Name": "email", "Value": email},
                     {"Name": "name", "Value": name},
-                ]
+                ],
             )
 
-            # DEV MODE → AUTO CONFIRM USER
-            if settings.DEV_MODE:
+            # ✅ DEV MODE: keep your old behaviour (auto-confirm, no OTP)
+            if getattr(settings, "DEV_MODE", False):
                 try:
                     client.admin_confirm_sign_up(
                         UserPoolId=settings.COGNITO["user_pool_id"],
-                        Username=email
+                        Username=email,
                     )
-                    messages.success(request, "Account created (DEV MODE AUTO-CONFIRMED). You can now login.")
+                    messages.success(
+                        request,
+                        "Account created (DEV MODE auto-confirmed). You can now login."
+                    )
+                    return redirect("login")
+
                 except Exception as e:
                     messages.warning(request, f"Auto-confirm skipped: {e}")
-            else:
-                messages.success(request, "Account created! Please check your email to verify your account.")
+                    # fall through to OTP flow below
 
-            return redirect("login")
+            # ✅ NORMAL MODE: ask user to enter OTP
+            request.session["pending_email"] = email
+            messages.success(
+                request,
+                "Account created! We've sent a verification code to your email. "
+                "Enter it below to activate your account."
+            )
+            return redirect("verify_otp")
 
         except client.exceptions.UsernameExistsException:
             messages.error(request, "This email already exists.")
             return redirect("register")
 
         except client.exceptions.InvalidPasswordException:
-            messages.error(request, "Password must contain uppercase, lowercase, number, and symbol.")
+            messages.error(
+                request,
+                "Password must contain uppercase, lowercase, number, and symbol."
+            )
             return redirect("register")
 
         except Exception as e:
@@ -182,6 +206,51 @@ def register(request):
             return redirect("register")
 
     return render(request, "register.html")
+
+def verify_otp(request):
+    email = request.session.get("pending_email")
+
+    if not email:
+        messages.error(request, "No pending registration found. Please register first.")
+        return redirect("register")
+
+    client = boto3.client("cognito-idp", region_name=settings.COGNITO["region"])
+
+    if request.method == "POST":
+        code = request.POST.get("code", "").strip()
+
+        if not code:
+            messages.error(request, "Please enter the verification code.")
+            return render(request, "verify_otp.html", {"email": email})
+
+        try:
+            # 2️⃣ Confirm sign-up using the OTP code
+            client.confirm_sign_up(
+                ClientId=settings.COGNITO["app_client_id"],
+                Username=email,
+                ConfirmationCode=code,
+            )
+
+        except client.exceptions.CodeMismatchException:
+            messages.error(request, "Invalid verification code. Please try again.")
+            return render(request, "verify_otp.html", {"email": email})
+
+        except client.exceptions.ExpiredCodeException:
+            messages.error(request, "Verification code expired. Please request a new one.")
+            return render(request, "verify_otp.html", {"email": email})
+
+        except Exception:
+            messages.error(request, "Could not verify your account. Please try again.")
+            return render(request, "verify_otp.html", {"email": email})
+
+        # Success → user is now CONFIRMED in Cognito 🎉
+        request.session.pop("pending_email", None)
+        messages.success(request, "Your email is verified. You can now log in.")
+        return redirect("login")
+
+    # GET
+    return render(request, "verify_otp.html", {"email": email})
+
     
 
 def get_all_categories():
