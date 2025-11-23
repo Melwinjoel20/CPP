@@ -33,7 +33,7 @@ def pool_exists(pool_id):
     try:
         cognito.describe_user_pool(UserPoolId=pool_id)
         return True
-    except:
+    except Exception:
         return False
 
 
@@ -41,7 +41,7 @@ def client_exists(pool_id, client_id):
     try:
         cognito.describe_user_pool_client(UserPoolId=pool_id, ClientId=client_id)
         return True
-    except:
+    except Exception:
         return False
 
 
@@ -49,7 +49,7 @@ def domain_exists(domain_prefix):
     try:
         resp = cognito.describe_user_pool_domain(Domain=domain_prefix)
         return resp["DomainDescription"]["Status"] in ["ACTIVE", "CREATING"]
-    except:
+    except Exception:
         return False
 
 
@@ -68,10 +68,13 @@ def create_user_pool_if_needed(config):
         AutoVerifiedAttributes=["email"],
         UsernameAttributes=["email"],
         VerificationMessageTemplate={
-            "DefaultEmailOption": "CONFIRM_WITH_CODE",  # Safe for AWS Lab
+            "DefaultEmailOption": "CONFIRM_WITH_CODE",
             "EmailMessage": "Your EasyCart verification code is {{####}}",
             "EmailSubject": "EasyCart - Verify Your Email"
-        }
+        },
+        EmailConfiguration={
+            "EmailSendingAccount": "COGNITO_DEFAULT"
+        },
     )
 
     pool_id = resp["UserPool"]["Id"]
@@ -80,7 +83,7 @@ def create_user_pool_if_needed(config):
 
 
 # -------------------------------------------------------------------
-#  Apply simple safe email template (no HTML)
+# Safe email template
 # -------------------------------------------------------------------
 def apply_safe_verification_template(user_pool_id):
     print("→ Applying safe verification email template...")
@@ -88,6 +91,7 @@ def apply_safe_verification_template(user_pool_id):
     try:
         cognito.update_user_pool(
             UserPoolId=user_pool_id,
+            AutoVerifiedAttributes=["email"],
             VerificationMessageTemplate={
                 "DefaultEmailOption": "CONFIRM_WITH_CODE",
                 "EmailMessage": (
@@ -97,39 +101,63 @@ def apply_safe_verification_template(user_pool_id):
                 ),
                 "EmailSubject": "EasyCart Email Verification",
             },
+            EmailConfiguration={"EmailSendingAccount": "COGNITO_DEFAULT"}
         )
-        print("✔ Verification template applied (simple + safe)")
-
+        print("✔ Template applied")
     except Exception as e:
-        print("⚠ Could NOT update email template (expected in AWS Lab):", e)
+        print("⚠ Could NOT update email settings:", e)
 
 
 # -------------------------------------------------------------------
-# 2️⃣ Create App Client If Missing
+# 2️⃣ CREATE CONFIDENTIAL CLIENT (WITH SECRET)
 # -------------------------------------------------------------------
 def create_app_client_if_needed(config, user_pool_id):
-    if "app_client_id" in config and client_exists(user_pool_id, config["app_client_id"]):
+    if (
+        "app_client_id" in config 
+        and client_exists(user_pool_id, config["app_client_id"])
+    ):
         print(f"✔ App Client exists: {config['app_client_id']}")
-        return config["app_client_id"]
+        return config["app_client_id"], config.get("app_client_secret")
 
-    print("\n[2] Creating App Client...")
+    print("\n[2] Creating Confidential App Client (with secret)...")
 
-    resp = cognito.create_user_pool_client(
-        UserPoolId=user_pool_id,
-        ClientName=f"{PROJECT_NAME}-AppClient",
-        GenerateSecret=False,
-        ExplicitAuthFlows=["ALLOW_USER_PASSWORD_AUTH","ALLOW_ADMIN_USER_PASSWORD_AUTH", "ALLOW_REFRESH_TOKEN_AUTH"],
-        CallbackURLs=["http://localhost:8000/auth/callback/"],  # placeholder
-        LogoutURLs=["http://localhost:8000/auth/logout/"],
-        AllowedOAuthFlows=["code"],
-        AllowedOAuthScopes=["email", "openid", "profile"],
-        AllowedOAuthFlowsUserPoolClient=True
-    )
+    try:
+        resp = cognito.create_user_pool_client(
+            UserPoolId=user_pool_id,
+            ClientName=f"{PROJECT_NAME}-SecureAppClient",
 
-    client_id = resp["UserPoolClient"]["ClientId"]
-    print(f"✔ Created App Client: {client_id}")
-    return client_id
+            # ⭐ MUST be True for secrets
+            GenerateSecret=True,
 
+            # ⭐ Hosted UI MUST be disabled or Cognito rejects secret
+            AllowedOAuthFlowsUserPoolClient=False,
+            AllowedOAuthFlows=[],
+            AllowedOAuthScopes=[],
+
+            # ⭐ Enable these for backend password login
+            ExplicitAuthFlows=[
+                "ALLOW_USER_PASSWORD_AUTH",
+                "ALLOW_ADMIN_USER_PASSWORD_AUTH",
+                "ALLOW_REFRESH_TOKEN_AUTH",
+            ],
+
+            # ⭐ REMOVE callback/logout URLs — not allowed for confidential clients
+            CallbackURLs=[],
+            LogoutURLs=[],
+        )
+
+        client_id = resp["UserPoolClient"]["ClientId"]
+        client_secret = resp["UserPoolClient"]["ClientSecret"]
+
+        print("✔ Created Confidential Client:")
+        print("  ID:", client_id)
+        print("  SECRET:", client_secret)
+
+        return client_id, client_secret
+
+    except Exception as e:
+        print("❌ Failed to create app client:", str(e))
+        return None, None
 
 # -------------------------------------------------------------------
 # 3️⃣ Create Domain If Missing
@@ -154,49 +182,35 @@ def create_domain_if_needed(config, user_pool_id):
     print(f"✔ Created Domain: {domain}")
     return domain
 
-def update_app_client(user_pool_id, client_id):
-    print("→ Updating App Client to enable ADMIN_USER_PASSWORD_AUTH...")
-
-    cognito.update_user_pool_client(
-        UserPoolId=user_pool_id,
-        ClientId=client_id,
-        ExplicitAuthFlows=[
-            "ALLOW_USER_PASSWORD_AUTH",
-            "ALLOW_ADMIN_USER_PASSWORD_AUTH",
-            "ALLOW_REFRESH_TOKEN_AUTH"
-        ]
-    )
-
-    print("✔ App Client updated.")
-
-
 
 # -------------------------------------------------------------------
 # MAIN DRIVER
 # -------------------------------------------------------------------
 def main():
-    print("🚀 EasyCart Cognito Auto-Setup — SAFE MODE (AWS Lab Compatible)")
+    print("🚀 EasyCart Cognito Auto-Setup — Confidential Client Mode")
 
     config = load_config()
 
     user_pool_id = create_user_pool_if_needed(config)
     apply_safe_verification_template(user_pool_id)
 
-    app_client_id = create_app_client_if_needed(config, user_pool_id)
-    update_app_client(user_pool_id, app_client_id)
+    app_client_id, app_client_secret = create_app_client_if_needed(
+        config, user_pool_id
+    )
+
     domain_url = create_domain_if_needed(config, user_pool_id)
 
     config.update({
         "region": REGION,
         "user_pool_id": user_pool_id,
         "app_client_id": app_client_id,
-        "domain_url": domain_url
+        "app_client_secret": app_client_secret,
+        "domain_url": domain_url,
     })
 
     save_config(config)
 
-    print("\n🎉 Cognito Ready in AWS Lab (Safe Mode).")
-    print("✔ You can run this script anytime — nothing breaks.")
+    print("\n🎉 Cognito setup complete — Confidential App Client ready.")
 
 
 if __name__ == "__main__":

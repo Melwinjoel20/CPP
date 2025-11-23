@@ -4,6 +4,12 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.messages import get_messages
 from easycart_rate_limiter import check_rate_limit
+from botocore.exceptions import ClientError
+import hmac
+import hashlib
+import base64
+
+
 
 # Home / Base view
 def base(request):
@@ -14,28 +20,78 @@ def home(request):
     return render(request, 'home.html')
 
 
-cognito = boto3.client(
-    "cognito-idp",
-    region_name=settings.COGNITO["region"]
-)
+import base64
+import hmac
+import hashlib
+
+import boto3
+from botocore.exceptions import ClientError
+
+from django.conf import settings
+from django.shortcuts import render, redirect
+from django.contrib import messages
+from django.contrib.messages import get_messages
+
+
+# ==========================================================
+# Helpers
+# ==========================================================
+
+def get_cognito_client():
+    return boto3.client(
+        "cognito-idp",
+        region_name=settings.COGNITO["region"],
+    )
+
 
 def clear_messages(request):
     storage = get_messages(request)
     for _ in storage:
+        # iterating consumes them
         pass
+
+
+def get_secret_hash(username: str) -> str:
+    """
+    Compute SECRET_HASH for Cognito app clients that have a secret.
+    SECRET_HASH = base64(HMAC_SHA256(client_secret, username + client_id))
+    """
+    client_id = settings.COGNITO["app_client_id"]
+    client_secret = settings.COGNITO["app_client_secret"]
+
+    msg = username + client_id
+    dig = hmac.new(
+        client_secret.encode("utf-8"),
+        msg=msg.encode("utf-8"),
+        digestmod=hashlib.sha256,
+    ).digest()
+    return base64.b64encode(dig).decode("utf-8")
+
+
+# ==========================================================
+# LOGIN
+# ==========================================================
 
 def login_view(request):
     if request.method == "POST":
-        email = request.POST.get("email").strip()
-        password = request.POST.get("password").strip()
-        
-        key = f"login:{email}"   # per-user rate limit
+        email = request.POST.get("email", "").strip()
+        password = request.POST.get("password", "").strip()
 
-        allowed = check_rate_limit(
-            key,
-            limit=settings.RATE_LIMIT_LOGIN_LIMIT,
-            window=settings.RATE_LIMIT_LOGIN_WINDOW
-        )
+        if not email or not password:
+            messages.error(request, "Please enter email and password.")
+            return redirect("login")
+
+        # Per-user rate limit
+        key = f"login:{email}"
+        try:
+            allowed = check_rate_limit(
+                key,
+                limit=settings.RATE_LIMIT_LOGIN_LIMIT,
+                window=settings.RATE_LIMIT_LOGIN_WINDOW,
+            )
+        except NameError:
+            # If check_rate_limit isn't defined, just allow (or implement it)
+            allowed = True
 
         if not allowed:
             messages.error(
@@ -44,19 +100,19 @@ def login_view(request):
             )
             return redirect("login")
 
+        client = get_cognito_client()
 
-        client = boto3.client("cognito-idp", region_name=settings.COGNITO["region"])
-
-        # Try normal authentication
         try:
+            # ADMIN_USER_PASSWORD_AUTH + SECRET_HASH
             auth_response = client.admin_initiate_auth(
                 UserPoolId=settings.COGNITO["user_pool_id"],
                 ClientId=settings.COGNITO["app_client_id"],
                 AuthFlow="ADMIN_USER_PASSWORD_AUTH",
                 AuthParameters={
                     "USERNAME": email,
-                    "PASSWORD": password
-                }
+                    "PASSWORD": password,
+                    "SECRET_HASH": get_secret_hash(email),
+                },
             )
 
         except client.exceptions.NotAuthorizedException:
@@ -68,77 +124,89 @@ def login_view(request):
             return redirect("login")
 
         except client.exceptions.UserNotConfirmedException:
-            # ❗ This happens even with correct password in DEV environments
-            if settings.DEV_MODE:
+            if getattr(settings, "DEV_MODE", False):
                 messages.warning(request, "Email verification skipped (DEV mode).")
-
-                # Try AGAIN – if password is wrong, this WILL fail
                 try:
+                    # auto-confirm in DEV if needed
+                    client.admin_confirm_sign_up(
+                        UserPoolId=settings.COGNITO["user_pool_id"],
+                        Username=email,
+                    )
                     auth_response = client.admin_initiate_auth(
                         UserPoolId=settings.COGNITO["user_pool_id"],
                         ClientId=settings.COGNITO["app_client_id"],
                         AuthFlow="ADMIN_USER_PASSWORD_AUTH",
                         AuthParameters={
                             "USERNAME": email,
-                            "PASSWORD": password
-                        }
+                            "PASSWORD": password,
+                            "SECRET_HASH": get_secret_hash(email),
+                        },
                     )
-                except:
+                except Exception:
                     messages.error(request, "Incorrect email or password.")
                     return redirect("login")
-
             else:
                 messages.error(request, "Please verify your email before logging in.")
                 return redirect("login")
+
+        except ClientError as e:
+            messages.error(request, f"Login failed: {e.response['Error']['Message']}")
+            return redirect("login")
 
         except Exception as e:
             messages.error(request, f"Login failed: {str(e)}")
             return redirect("login")
 
-        # 🎉 If we reach here → password is 100% correct
+        # If we reach here, password is correct and auth succeeded
 
-        # Fetch user details
-        user = client.admin_get_user(
-            UserPoolId=settings.COGNITO["user_pool_id"],
-            Username=email
-        )
+        try:
+            user = client.admin_get_user(
+                UserPoolId=settings.COGNITO["user_pool_id"],
+                Username=email,
+            )
+        except Exception as e:
+            messages.error(request, f"Failed to fetch user info: {e}")
+            return redirect("login")
 
         full_name = None
-        for attr in user["UserAttributes"]:
+        email_verified = False
+        for attr in user.get("UserAttributes", []):
             if attr["Name"] == "name":
                 full_name = attr["Value"]
+            elif attr["Name"] == "email_verified":
+                email_verified = (attr["Value"] == "true")
+
+        # PROD: enforce email verification
+        if not getattr(settings, "DEV_MODE", False) and not email_verified:
+            messages.error(request, "Please verify your email before logging in.")
+            return redirect("login")
 
         # Save session
         request.session["user_email"] = email
         request.session["user_name"] = full_name
-        request.session["user_id"] = email  
+        request.session["user_id"] = email  # or user["Username"]
 
-
-        # PROD MODE ONLY: verify email
-        if not settings.DEV_MODE:
-            for attr in user["UserAttributes"]:
-                if attr["Name"] == "email_verified" and attr["Value"] == "false":
-                    messages.error(request, "Please verify your email before logging in.")
-                    return redirect("login")
-
-        messages.success(request, f"Welcome, {full_name}!")
+        messages.success(request, f"Welcome, {full_name or email}!")
         return redirect("home")
 
+    # GET
     return render(request, "login.html")
 
 
+# ==========================================================
+# LOGOUT
+# ==========================================================
 
 def logout_view(request):
     request.session.flush()
     clear_messages(request)
     messages.success(request, "You have been logged out.")
     return redirect("login")
-    
-import boto3
-from django.conf import settings
-from django.shortcuts import render, redirect
-from django.contrib import messages
 
+
+# ==========================================================
+# REGISTER
+# ==========================================================
 
 def register(request):
     if request.method == "POST":
@@ -150,12 +218,13 @@ def register(request):
             messages.error(request, "Please fill in all fields.")
             return redirect("register")
 
-        client = boto3.client("cognito-idp", region_name=settings.COGNITO["region"])
+        client = get_cognito_client()
 
         try:
-            # 1️⃣ Sign up (this triggers OTP email if verification is enabled on the user pool)
-            client.sign_up(
+            # Sign up – includes SECRET_HASH because client has secret
+            resp = client.sign_up(
                 ClientId=settings.COGNITO["app_client_id"],
+                SecretHash=get_secret_hash(email),
                 Username=email,
                 Password=password,
                 UserAttributes=[
@@ -163,8 +232,9 @@ def register(request):
                     {"Name": "name", "Value": name},
                 ],
             )
+            print("SIGN UP RESP:", resp)
 
-            # ✅ DEV MODE: keep your old behaviour (auto-confirm, no OTP)
+            # DEV: auto-confirm
             if getattr(settings, "DEV_MODE", False):
                 try:
                     client.admin_confirm_sign_up(
@@ -176,12 +246,11 @@ def register(request):
                         "Account created (DEV MODE auto-confirmed). You can now login."
                     )
                     return redirect("login")
-
                 except Exception as e:
                     messages.warning(request, f"Auto-confirm skipped: {e}")
-                    # fall through to OTP flow below
+                    # fall through to OTP flow
 
-            # ✅ NORMAL MODE: ask user to enter OTP
+            # Normal: send OTP and redirect to verify page
             request.session["pending_email"] = email
             messages.success(
                 request,
@@ -201,11 +270,21 @@ def register(request):
             )
             return redirect("register")
 
+        except ClientError as e:
+            messages.error(request, f"Error: {e.response['Error']['Message']}")
+            return redirect("register")
+
         except Exception as e:
             messages.error(request, f"Error: {str(e)}")
             return redirect("register")
 
+    # GET
     return render(request, "register.html")
+
+
+# ==========================================================
+# VERIFY OTP (CONFIRM SIGNUP)
+# ==========================================================
 
 def verify_otp(request):
     email = request.session.get("pending_email")
@@ -214,7 +293,7 @@ def verify_otp(request):
         messages.error(request, "No pending registration found. Please register first.")
         return redirect("register")
 
-    client = boto3.client("cognito-idp", region_name=settings.COGNITO["region"])
+    client = get_cognito_client()
 
     if request.method == "POST":
         code = request.POST.get("code", "").strip()
@@ -224,9 +303,9 @@ def verify_otp(request):
             return render(request, "verify_otp.html", {"email": email})
 
         try:
-            # 2️⃣ Confirm sign-up using the OTP code
             client.confirm_sign_up(
                 ClientId=settings.COGNITO["app_client_id"],
+                SecretHash=get_secret_hash(email),
                 Username=email,
                 ConfirmationCode=code,
             )
@@ -239,11 +318,18 @@ def verify_otp(request):
             messages.error(request, "Verification code expired. Please request a new one.")
             return render(request, "verify_otp.html", {"email": email})
 
+        except ClientError as e:
+            messages.error(
+                request,
+                f"Could not verify your account: {e.response['Error']['Message']}"
+            )
+            return render(request, "verify_otp.html", {"email": email})
+
         except Exception:
             messages.error(request, "Could not verify your account. Please try again.")
             return render(request, "verify_otp.html", {"email": email})
 
-        # Success → user is now CONFIRMED in Cognito 🎉
+        # Success
         request.session.pop("pending_email", None)
         messages.success(request, "Your email is verified. You can now log in.")
         return redirect("login")
@@ -251,7 +337,97 @@ def verify_otp(request):
     # GET
     return render(request, "verify_otp.html", {"email": email})
 
-    
+
+# ==========================================================
+# FORGOT PASSWORD
+# ==========================================================
+
+def cognito_forgot_password(username: str):
+    client = get_cognito_client()
+    try:
+        return client.forgot_password(
+            ClientId=settings.COGNITO["app_client_id"],
+            Username=username,
+            SecretHash=get_secret_hash(username),
+        )
+    except ClientError as e:
+        return {"error": e.response["Error"]["Message"]}
+    except Exception as e:
+        return {"error": str(e)}
+
+
+def forgot_password(request):
+    if request.method == "POST":
+        username = request.POST.get("username", "").strip()
+
+        if not username:
+            messages.error(request, "Please enter your email.")
+            return redirect("forgot_password")
+
+        res = cognito_forgot_password(username)
+        print("FORGOT PASSWORD RESPONSE:", res)
+        if "error" in res:
+            messages.error(request, res["error"])
+            return redirect("forgot_password")
+
+        request.session["reset_username"] = username
+        messages.success(request, "OTP sent to your email.")
+        return redirect("reset_password")
+        
+
+    return render(request, "forgot_password.html")
+    print("FORGOT PASSWORD RESPONSE:", res)
+
+
+# ==========================================================
+# RESET PASSWORD (CONFIRM FORGOT PASSWORD)
+# ==========================================================
+
+def cognito_confirm_new_password(username: str, code: str, new_password: str):
+    client = get_cognito_client()
+    try:
+        return client.confirm_forgot_password(
+            ClientId=settings.COGNITO["app_client_id"],
+            Username=username,
+            ConfirmationCode=code,
+            Password=new_password,
+            SecretHash=get_secret_hash(username),
+        )
+    except ClientError as e:
+        return {"error": e.response["Error"]["Message"]}
+    except Exception as e:
+        return {"error": str(e)}
+
+
+def reset_password(request):
+    username = request.session.get("reset_username")
+
+    if not username:
+        messages.error(
+            request,
+            "No password reset request found. Please request a reset again."
+        )
+        return redirect("forgot_password")
+
+    if request.method == "POST":
+        code = request.POST.get("code", "").strip()
+        new_password = request.POST.get("password", "")
+
+        if not code or not new_password:
+            messages.error(request, "Please fill in all fields.")
+            return redirect("reset_password")
+
+        res = cognito_confirm_new_password(username, code, new_password)
+
+        if "error" in res:
+            messages.error(request, res["error"])
+            return redirect("reset_password")
+
+        request.session.pop("reset_username", None)
+        messages.success(request, "Password reset successful! You can now login.")
+        return redirect("login")
+
+    return render(request, "reset_password.html")
 
 def get_all_categories():
     return ["Phones", "Laptops", "Accessories"]  # Can be replaced with auto-detection later

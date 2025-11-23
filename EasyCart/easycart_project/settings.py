@@ -157,7 +157,8 @@ COGNITO = {
     # ⭐ add lambda cart endpoints here
     "lambda_cart_endpoints": infra_config.get("lambda_cart_endpoints", {}),
     "rate_limit": infra_config.get("rate_limit", {}),
-    "Rate_limit_table": infra_config.get("RATE_LIMIT_TABLE", {})
+    "Rate_limit_table": infra_config.get("RATE_LIMIT_TABLE", {}),
+    "app_client_secret":infra_config.get("app_client_secret")
 
     
 }
