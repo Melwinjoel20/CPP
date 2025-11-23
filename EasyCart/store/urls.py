@@ -13,9 +13,7 @@ urlpatterns = [
      path("cart/", views.view_cart, name="view_cart"),
      path("checkout/", views.checkout, name="checkout"),
      path("order-confirmation/", views.order_confirmation, name="order_confirmation"),
-
-
-
-
-
+     path("verify-otp/", views.verify_otp, name="verify_otp"),
+     path("forgot_password/", views.forgot_password, name="forgot_password"),
+     path("reset_password/", views.reset_password, name="reset_password")
 ]

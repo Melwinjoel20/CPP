@@ -1,10 +1,10 @@
 {
     "region": "us-east-1",
-    "user_pool_id": "us-east-1_88RaH8xvI",
-    "app_client_id": "12p9trmd5eur7ksq34ui2k855p",
-    "domain_url": "https://easycart-1763633794.auth.us-east-1.amazoncognito.com",
+    "user_pool_id": "us-east-1_Dhr3WDWcB",
+    "app_client_id": "1av6dbjng4m24uf9do9b3lkjaa",
+    "domain_url": "https://easycart-1763854700.auth.us-east-1.amazoncognito.com",
     "s3_logo_url": "https://easycart-proj-nci.s3.us-east-1.amazonaws.com/images/EasyCartLogo.png",
-    "dev_mode": true,
+    "dev_mode": false,
     "bucket_name": "easycart-proj-nci",
     "s3_logo_path": "images/EasyCartLogo.png",
     "local_logo_file": "infra/EasyCartLogo.png",
@@ -29,5 +29,6 @@
             "window": 60
         }
     },
-    "RATE_LIMIT_TABLE": "RateLimits"
+    "RATE_LIMIT_TABLE": "RateLimits",
+    "app_client_secret": "iur1dqp21bjp0forq0mnj2okavncf4m3dojqh8u7hst2qvqeub0"
 }
