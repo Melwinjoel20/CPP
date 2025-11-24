@@ -10,6 +10,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
 
+    # Allow manual deploy OR auto deploy on CI success
     if: |
       github.event_name == 'workflow_dispatch' ||
       (
@@ -18,7 +19,7 @@ jobs:
       )
 
     steps:
-      - name: Checkout code
+      - name: Checkout repo
         uses: actions/checkout@v4
 
       - name: Download artifact from CI
@@ -28,13 +29,15 @@ jobs:
           run-id: ${{ github.event.workflow_run.id }}
           path: .
 
-      - name: Debug - show artifact
-        run: ls -al .
+      - name: Debug list
+        run: |
+          echo "Downloaded files:"
+          ls -al .
 
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.9'
+          python-version: "3.9"
 
       - name: Install EB CLI
         run: |
@@ -55,7 +58,7 @@ jobs:
             --region "${{ secrets.AWS_REGION }}" \
             --platform "Python 3.9 running on 64bit Amazon Linux 2023" || true
 
-      - name: Deploy to EB
+      - name: Deploy to Elastic Beanstalk
         run: |
           eb deploy "${{ secrets.EB_ENV_NAME }}" \
             --label "build-${{ github.run_id }}" \
