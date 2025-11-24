@@ -4,17 +4,17 @@ on:
   workflow_run:
     workflows: ["Build EasyCart (CI)"]
     types: [completed]
+    branches: [main]
   workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
     if: >
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'workflow_run' &&
        github.event.workflow_run.conclusion == 'success')
-
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -23,10 +23,11 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: easycart-app-zip
-          path: artifact
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: List artifact contents
-        run: ls -R artifact
+      - name: List downloaded files
+        run: ls -la
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -46,15 +47,18 @@ jobs:
           aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: EB init
+      - name: Initialize Elastic Beanstalk
         run: |
+          cd EasyCart
           eb init "${{ secrets.EB_APP_NAME }}" \
             --region "${{ secrets.AWS_REGION }}" \
-            --platform "Python 3.9 running on 64bit Amazon Linux 2023" || true
+            --platform "Python 3.9 running on 64bit Amazon Linux 2023"
+        continue-on-error: true
 
       - name: Deploy to Elastic Beanstalk
         run: |
-          cd artifact/easycart-app-zip
+          cd EasyCart
           eb deploy "${{ secrets.EB_ENV_NAME }}" \
-            --label "build-${{ github.run_id }}" \
-            --staged
+            --label "build-${{ github.run_id }}-${{ github.sha }}" \
+            --source ../app.zip \
+            --timeout 20
