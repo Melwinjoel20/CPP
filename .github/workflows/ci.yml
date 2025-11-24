@@ -5,7 +5,7 @@ on:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
-  workflow_dispatch:
+  workflow_dispatch:  # manual trigger
 
 permissions:
   contents: read
@@ -16,7 +16,7 @@ jobs:
 
     defaults:
       run:
-        working-directory: EasyCart
+        working-directory: EasyCart  # your Django project root
 
     steps:
       - name: Checkout code
@@ -48,8 +48,14 @@ jobs:
           zip -r app.zip . \
             -x "env/*" "__pycache__/*" ".git/*" ".github/*"
 
+      - name: Debug - list files before upload
+        run: |
+          pwd
+          ls -R .
+
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
           name: easycart-app-zip
-          path: EasyCart/app.zip
+          path: |
+            EasyCart/app.zip
