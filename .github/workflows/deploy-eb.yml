@@ -4,19 +4,16 @@ on:
   workflow_run:
     workflows: ["Build EasyCart (CI)"]
     types: [completed]
-
   workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
-    if: |
+    if: >
       github.event_name == 'workflow_dispatch' ||
-      (
-        github.event_name == 'workflow_run' &&
-        github.event.workflow_run.conclusion == 'success'
-      )
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'success')
 
     steps:
       - name: Checkout code
@@ -47,4 +44,17 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
-          aws-region: ${{ secret
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: EB init
+        run: |
+          eb init "${{ secrets.EB_APP_NAME }}" \
+            --region "${{ secrets.AWS_REGION }}" \
+            --platform "Python 3.9 running on 64bit Amazon Linux 2023" || true
+
+      - name: Deploy to Elastic Beanstalk
+        run: |
+          cd artifact/easycart-app-zip
+          eb deploy "${{ secrets.EB_ENV_NAME }}" \
+            --label "build-${{ github.run_id }}" \
+            --staged
