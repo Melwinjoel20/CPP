@@ -56,13 +56,14 @@ jobs:
 
       - name: EB init
         run: |
-          cd artifact/easycart-app-zip/EasyCart
+          cd artifact/build-19648892967/EasyCart
           eb init "${{ secrets.EB_APP_NAME }}" \
             --region "${{ secrets.AWS_REGION }}" \
             --platform "Python 3.9 running on 64bit Amazon Linux 2023" || true
 
       - name: Deploy to Elastic Beanstalk
         run: |
-          cd artifact/easycart-app-zip/EasyCart
+          cd artifact/build-19648892967/EasyCart
           eb deploy "${{ secrets.EB_ENV_NAME }}" \
             --label "build-${{ github.run_id }}"
+
