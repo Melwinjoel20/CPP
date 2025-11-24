@@ -24,54 +24,13 @@ jobs:
       - name: Install GitHub CLI
         run: sudo apt-get install -y gh
 
-      - name: Download CI artifact (retry)
+      - name: Download CI Artifact Folder
         run: |
-          for i in {1..10}; do
-            echo "Attempt $i downloading artifact..."
-            if gh run download ${{ github.event.workflow_run.id }} -n easycart-app-zip; then
-              echo "Artifact downloaded!"
-              break
-            fi
-            echo "Retrying in 5 sec..."
-            sleep 5
-          done
+          mkdir -p artifact
+          gh run download ${{ github.event.workflow_run.id }} \
+            -n easycart-app-zip \
+            --dir artifact
         env:
           GH_TOKEN: ${{ github.token }}
 
-      - name: Unzip artifact
-        run: |
-          unzip easycart-app-zip.zip -d ./app_src
-          ls -al app_src
-
-      - name: CD into app directory
-        run: |
-          cd app_src/EasyCart
-          ls -al
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.9'
-
-      - name: Install EB CLI
-        run: pip install awsebcli
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
-          aws-region: ${{ secrets.AWS_REGION }}
-
-      - name: EB init (safe)
-        run: |
-          cd app_src/EasyCart
-          eb init "${{ secrets.EB_APP_NAME }}" \
-            --region "${{ secrets.AWS_REGION }}" \
-            --platform "Python 3.9 running on 64bit Amazon Linux 2023" || true
-
-      - name: Deploy to EB
-        run: |
-          cd app_src/EasyCart
-          eb deploy "${{ secrets.EB_ENV_NAME }}" --label "build-${{ github.run_id }}"
+      - name: List artifact contents
