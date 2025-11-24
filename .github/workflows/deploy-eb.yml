@@ -69,4 +69,4 @@ jobs:
         run: |
           eb deploy "${{ secrets.EB_ENV_NAME }}" \
             --label "build-${{ github.run_id }}" \
-            --staged
+            --source easycart-app-zip.zip
