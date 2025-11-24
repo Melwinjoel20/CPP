@@ -106,7 +106,10 @@ document.addEventListener("click", async (e) => {
     try {
         const res = await fetch(ADD_TO_CART_URL, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { 
+              "Content-Type": "application/json",
+              "Authorization": "Bearer {{ request.session.cognito_id_token }}"
+            },
             body: JSON.stringify(payload)
         });
 

@@ -125,9 +125,31 @@ const VIEW_CART_URL = "{{ VIEW_CART_URL }}";
 const PLACE_ORDER_URL = "{{ PLACE_ORDER_URL }}";
 const USER_ID = "{{ request.session.user_id|default:'guest123' }}";
 
+// 🔐 ID token from session (same pattern as product & cart pages)
+const ID_TOKEN = "{{ request.session.cognito_id_token|default:'' }}";
+const LOGIN_URL = "{% url 'login' %}";
+
+// If there's no ID token at all, treat as logged-out / expired
+if (!ID_TOKEN) {
+    alert("Your session has expired. Please log in again.");
+    window.location.href = LOGIN_URL;
+}
+
 // 🟦 Load cart items for summary
 async function loadOrderSummary() {
-    const res = await fetch(`${VIEW_CART_URL}?user_id=${USER_ID}`);
+    const res = await fetch(VIEW_CART_URL, {
+        method: "GET",
+        headers: {
+            "Authorization": "Bearer " + ID_TOKEN
+        }
+    });
+
+    if (res.status === 401) {
+        alert("Your session has expired. Please log in again.");
+        window.location.href = LOGIN_URL;
+        return;
+    }
+
     const items = await res.json();
 
     const container = document.getElementById("order-items");
@@ -184,9 +206,18 @@ document.getElementById("place-order-btn").addEventListener("click", async () =>
     try {
         const res = await fetch(PLACE_ORDER_URL, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { 
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + ID_TOKEN
+            },
             body: JSON.stringify(payload)
         });
+
+        if (res.status === 401) {
+            alert("Your session has expired. Please log in again.");
+            window.location.href = LOGIN_URL;
+            return;
+        }
 
         const data = await res.json();
 
@@ -194,7 +225,7 @@ document.getElementById("place-order-btn").addEventListener("click", async () =>
             alert("Order placed successfully! Order ID: " + data.order_id);
             window.location.href = "/store/order-confirmation/?id=" + data.order_id;
         } else {
-            alert("Order failed: " + data.error);
+            alert("Order failed: " + (data.error || "Unknown error"));
         }
 
     } catch (err) {
