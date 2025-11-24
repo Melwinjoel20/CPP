@@ -1,5 +1,6 @@
 README.md
 pyproject.toml
+setup.py
 easycart_rate_limiter/__init__.py
 easycart_rate_limiter/dynamo_backend.py
 easycart_rate_limiter/exceptions.py

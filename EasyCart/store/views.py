@@ -3,8 +3,8 @@ from django.shortcuts import render, redirect
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.messages import get_messages
-from easycart_rate_limiter import check_rate_limit
 from botocore.exceptions import ClientError
+from easycart_rate_limiter import check_rate_limit
 import hmac
 import hashlib
 import base64
@@ -18,20 +18,6 @@ def base(request):
 def home(request):
     
     return render(request, 'home.html')
-
-
-import base64
-import hmac
-import hashlib
-
-import boto3
-from botocore.exceptions import ClientError
-
-from django.conf import settings
-from django.shortcuts import render, redirect
-from django.contrib import messages
-from django.contrib.messages import get_messages
-
 
 # ==========================================================
 # Helpers
@@ -83,15 +69,13 @@ def login_view(request):
 
         # Per-user rate limit
         key = f"login:{email}"
-        try:
-            allowed = check_rate_limit(
-                key,
-                limit=settings.RATE_LIMIT_LOGIN_LIMIT,
-                window=settings.RATE_LIMIT_LOGIN_WINDOW,
-            )
-        except NameError:
-            # If check_rate_limit isn't defined, just allow (or implement it)
-            allowed = True
+
+        # ❗ No silent fallback: if import missing, app errors (correct)
+        allowed = check_rate_limit(
+            key,
+            limit=settings.RATE_LIMIT_LOGIN_LIMIT,
+            window=settings.RATE_LIMIT_LOGIN_WINDOW,
+        )
 
         if not allowed:
             messages.error(
@@ -127,7 +111,6 @@ def login_view(request):
             if getattr(settings, "DEV_MODE", False):
                 messages.warning(request, "Email verification skipped (DEV mode).")
                 try:
-                    # auto-confirm in DEV if needed
                     client.admin_confirm_sign_up(
                         UserPoolId=settings.COGNITO["user_pool_id"],
                         Username=email,
@@ -158,22 +141,19 @@ def login_view(request):
             return redirect("login")
 
         # 🎉 If we reach here, password is correct and auth succeeded
-
-        # Save Cognito tokens for API Gateway / other use
         tokens = auth_response.get("AuthenticationResult", {})
         access_token = tokens.get("AccessToken")
         id_token = tokens.get("IdToken")
 
-        # These will be used when calling your protected API Gateway endpoints
         if access_token:
             request.session["cognito_access_token"] = access_token
             print("ACCESS TOKEN:", access_token)
 
         if id_token:
             request.session["cognito_id_token"] = id_token
-            print("ACCESS TOKEN:", id_token)
-        
-        # Fetch user details from Cognito
+            print("ID TOKEN:", id_token)
+
+        # Fetch user details
         try:
             user = client.admin_get_user(
                 UserPoolId=settings.COGNITO["user_pool_id"],
@@ -191,22 +171,19 @@ def login_view(request):
             elif attr["Name"] == "email_verified":
                 email_verified = (attr["Value"] == "true")
 
-        # PROD: enforce email verification
         if not getattr(settings, "DEV_MODE", False) and not email_verified:
             messages.error(request, "Please verify your email before logging in.")
             return redirect("login")
 
-        # Save session
         request.session["user_email"] = email
         request.session["user_name"] = full_name
-        request.session["user_id"] = email  # or user["Username"]
+        request.session["user_id"] = email
 
         messages.success(request, f"Welcome, {full_name or email}!")
         return redirect("home")
 
     # GET
     return render(request, "login.html")
-
 
 
 # ==========================================================
