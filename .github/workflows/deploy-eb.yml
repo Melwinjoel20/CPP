@@ -10,7 +10,6 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
 
-    # Allow manual deploy OR auto deploy on CI success
     if: |
       github.event_name == 'workflow_dispatch' ||
       (
@@ -19,25 +18,33 @@ jobs:
       )
 
     steps:
-      - name: Checkout repo
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Download artifact from CI
-        uses: actions/download-artifact@v4
-        with:
-          name: easycart-app-zip
-          run-id: ${{ github.event.workflow_run.id }}
-          path: .
+      - name: Install GitHub CLI
+        run: sudo apt-get install -y gh
 
-      - name: Debug list
+      - name: Wait for artifact (retry 10x)
         run: |
-          echo "Downloaded files:"
-          ls -al .
+          for i in {1..10}; do
+            echo "Attempt $i downloading artifact..."
+            if gh run download ${{ github.event.workflow_run.id }} -n easycart-app-zip; then
+              echo "Artifact downloaded successfully!"
+              break
+            fi
+            echo "Artifact not available yet. Waiting 6 seconds..."
+            sleep 6
+          done
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: List downloaded files
+        run: ls -al
 
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.9"
+          python-version: '3.9'
 
       - name: Install EB CLI
         run: |
