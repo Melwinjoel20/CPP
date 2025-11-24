@@ -45,11 +45,11 @@ jobs:
 
       - name: Create deployment bundle
         run: |
-          zip -r ../app.zip . \
+          zip -r app.zip . \
             -x "env/*" "__pycache__/*" ".git/*" ".github/*"
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
           name: easycart-app-zip
-          path: ../app.zip
+          path: EasyCart/app.zip
