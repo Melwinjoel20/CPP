@@ -4,13 +4,12 @@ on:
   workflow_run:
     workflows: ["Build EasyCart (CI)"]
     types: [completed]
-  workflow_dispatch:   # manual deploy option
+  workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
-    # allow manual OR allow auto only when CI = success
     if: |
       github.event_name == 'workflow_dispatch' ||
       (
@@ -22,15 +21,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Download artifact from CI run
+      - name: Download artifact from CI
         uses: actions/download-artifact@v4
         with:
           name: easycart-app-zip
           run-id: ${{ github.event.workflow_run.id }}
           path: .
 
-      - name: Debug - list downloaded files
-        run: ls -al
+      - name: Debug - show artifact
+        run: ls -al .
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -50,13 +49,13 @@ jobs:
           aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: EB init (idempotent)
+      - name: EB init
         run: |
           eb init "${{ secrets.EB_APP_NAME }}" \
             --region "${{ secrets.AWS_REGION }}" \
             --platform "Python 3.9 running on 64bit Amazon Linux 2023" || true
 
-      - name: Deploy to Elastic Beanstalk
+      - name: Deploy to EB
         run: |
           eb deploy "${{ secrets.EB_ENV_NAME }}" \
             --label "build-${{ github.run_id }}" \
