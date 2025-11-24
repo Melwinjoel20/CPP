@@ -16,7 +16,7 @@ jobs:
 
     defaults:
       run:
-        working-directory: EasyCart  # because this is your Django project folder
+        working-directory: EasyCart   # <-- correct folder
 
     steps:
       - name: Checkout code
@@ -25,35 +25,23 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: '3.11'
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run tests (optional)
-        run: |
-          if [ -f manage.py ]; then
-            python manage.py test
-          else
-            echo "No manage.py found."
-          fi
-
-      - name: Install zip
-        run: sudo apt-get update && sudo apt-get install -y zip
+      - name: Install zip tool
+        run: sudo apt-get install -y zip
 
       - name: Create deployment bundle
         run: |
-          zip -r ../app.zip . \
-            -x "env/*" "__pycache__/*" ".git/*" ".github/*" "infra/*"
-
-      - name: Debug listing
-        run: ls -al ..
+          zip -r app.zip . \
+            -x "env/*" "__pycache__/*" ".git/*" ".github/*"
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
           name: easycart-app-zip
-          path: app.zip
-          # NOTE: Because working-directory is EasyCart/, ../app.zip becomes app.zip to upload
+          path: EasyCart/app.zip              # <-- FIXED path
