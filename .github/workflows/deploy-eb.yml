@@ -1,13 +1,21 @@
 name: Deploy to Elastic Beanstalk
 
 on:
-  push:
-    branches: ["main"]
+  workflow_run:
+    workflows: ["CI - Build and Test"]  # Replace with your actual CI workflow name
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    # Only deploy if manually triggered OR if CI completed successfully
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'success')
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -28,16 +36,23 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
-          aws-region: ${{ secrets.AWS_REGION }}
+          aws-region: us-east-1
+
+      - name: Verify environment exists
+        run: |
+          aws elasticbeanstalk describe-environments \
+            --application-name easycart-app-ebs-hi \
+            --environment-names easycart-app-env \
+            --region us-east-1
 
       - name: Deploy to Elastic Beanstalk
         run: |
           cd EasyCart
           
-          eb init "${{ secrets.EB_APP_NAME }}" \
-            --region "${{ secrets.AWS_REGION }}" \
-            --platform "Python 3.9 running on 64bit Amazon Linux 2023" || true
+          eb init easycart-app-ebs-hi \
+            --region us-east-1 \
+            --platform "Python 3.9 running on 64bit Amazon Linux 2023"
           
-          eb deploy "${{ secrets.EB_ENV_NAME }}" \
+          eb deploy easycart-app-env \
             --label "deploy-${{ github.run_id }}" \
             --timeout 20
