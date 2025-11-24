@@ -17,7 +17,6 @@ cart_table = dynamodb.Table("UserCart")
 
 
 def clean_decimal(obj):
-    """Convert Decimals → float for JSON-safe operations."""
     if isinstance(obj, list):
         return [clean_decimal(i) for i in obj]
     if isinstance(obj, dict):
@@ -28,7 +27,6 @@ def clean_decimal(obj):
 
 
 def to_decimal(obj):
-    """Convert floats → Decimal for DynamoDB."""
     if isinstance(obj, float):
         return Decimal(str(obj))
     if isinstance(obj, list):
@@ -48,10 +46,8 @@ def _cors_headers():
 
 
 def lambda_handler(event, context):
-    # Optional: log event for debugging
     print("Incoming event:", json.dumps(event))
 
-    # Safely detect method (HTTP API v2 or REST API)
     method = (
         (event.get("requestContext", {}) or {})
         .get("http", {})
@@ -59,7 +55,7 @@ def lambda_handler(event, context):
         or event.get("httpMethod", "")
     ).upper()
 
-    # 0️⃣ Handle CORS preflight
+    # 0️⃣ CORS preflight
     if method == "OPTIONS":
         return {
             "statusCode": 204,
@@ -67,25 +63,34 @@ def lambda_handler(event, context):
             "body": ""
         }
 
-    # 1️⃣ Parse body safely
-    body_str = event.get("body") or "{}"
-    try:
-        body = json.loads(body_str)
-    except (TypeError, json.JSONDecodeError):
-        body = {}
+    # -------------------------------
+    # 🔥 SECURE USER FROM JWT
+    # -------------------------------
+    auth = event.get("requestContext", {}).get("authorizer", {})
+    claims = auth.get("jwt", {}).get("claims", {}) or auth.get("claims", {})
 
-    user_id = body.get("user_id")
-    customer = body.get("customer") or {}
-    payment_method = body.get("payment_method", "card")
+    # ✔ REAL USER ID fetched ONLY from JWT
+    user_id = claims.get("email") or claims.get("cognito:username")
 
     if not user_id:
         return {
-            "statusCode": 400,
+            "statusCode": 401,
             "headers": _cors_headers(),
-            "body": json.dumps({"error": "user_id is required"})
+            "body": json.dumps({"error": "Unauthorized: Please log in"})
         }
+    # -------------------------------
 
-    # 2️⃣ Load items from cart
+    # 1️⃣ Parse body
+    body_str = event.get("body") or "{}"
+    try:
+        body = json.loads(body_str)
+    except:
+        body = {}
+
+    customer = body.get("customer") or {}
+    payment_method = body.get("payment_method", "card")
+
+    # 2️⃣ Load cart items
     cart_response = cart_table.scan(
         FilterExpression=Attr("user_id").eq(user_id)
     )
@@ -102,7 +107,7 @@ def lambda_handler(event, context):
     # 3️⃣ Calculate total
     total = sum(i.get("price", 0) * i.get("qty", 1) for i in items)
 
-    # 4️⃣ Create Order ID
+    # 4️⃣ Order ID
     order_id = str(uuid.uuid4())
 
     # 5️⃣ Convert for DynamoDB
@@ -123,13 +128,13 @@ def lambda_handler(event, context):
         }
     )
 
-    # 7️⃣ Clear cart after order
+    # 7️⃣ Clear cart
     for item in items:
         cart_table.delete_item(
             Key={"user_id": user_id, "item_id": item["item_id"]}
         )
 
-    # 8️⃣ SNS: subscribe or notify customer
+    # 8️⃣ SNS notify
     customer_email = customer.get("email")
 
     if SNS_TOPIC_ARN and customer_email:
@@ -156,7 +161,6 @@ def lambda_handler(event, context):
                 )
             )
 
-    # 9️⃣ Response to frontend
     return {
         "statusCode": 200,
         "headers": _cors_headers(),

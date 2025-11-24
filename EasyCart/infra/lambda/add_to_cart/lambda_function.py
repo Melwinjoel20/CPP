@@ -16,10 +16,9 @@ def _cors_headers():
 
 
 def lambda_handler(event, context):
-    # Optional: log for debugging
     print("Incoming event:", json.dumps(event))
 
-    # Safely detect HTTP method (HTTP API v2 or REST API)
+    # Determine HTTP method
     method = (
         (event.get("requestContext", {}) or {})
         .get("http", {})
@@ -27,7 +26,7 @@ def lambda_handler(event, context):
         or event.get("httpMethod", "")
     ).upper()
 
-    # 0️⃣ Handle CORS preflight
+    # CORS preflight
     if method == "OPTIONS":
         return {
             "statusCode": 204,
@@ -35,23 +34,36 @@ def lambda_handler(event, context):
             "body": ""
         }
 
-    # 1️⃣ Parse body safely
-    body_str = event.get("body") or "{}"
-    try:
-        body = json.loads(body_str)
-    except (TypeError, json.JSONDecodeError):
-        body = {}
+    # -----------------------------------------------------
+    # 🔥 USER IS ALREADY VERIFIED BY API GATEWAY JWT AUTHORIZER
+    # -----------------------------------------------------
+    auth = event.get("requestContext", {}).get("authorizer", {})
 
-    # 2️⃣ Validate user_id (only logged in users)
-    user_id = body.get("user_id")
+    # Extract claims
+    claims = auth.get("jwt", {}).get("claims", {}) or auth.get("claims", {})
+
+    print("JWT Claims:", claims)
+
+    # Since API Gateway validated JWT, this will always exist
+    user_id = claims.get("email") or claims.get("cognito:username")
+    
     if not user_id:
         return {
             "statusCode": 401,
             "headers": _cors_headers(),
-            "body": json.dumps({"message": "Please log in to add items to your cart."})
+            "body": json.dumps({"error": "Unauthorized: Please log in"})
         }
 
-    # 3️⃣ Proceed with adding to cart
+    # -----------------------------------------------------
+
+    # Parse request body
+    body_str = event.get("body") or "{}"
+    try:
+        body = json.loads(body_str)
+    except:
+        body = {}
+
+    # Insert into DynamoDB
     table.put_item(
         Item={
             "user_id": user_id,

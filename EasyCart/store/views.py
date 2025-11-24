@@ -157,8 +157,23 @@ def login_view(request):
             messages.error(request, f"Login failed: {str(e)}")
             return redirect("login")
 
-        # If we reach here, password is correct and auth succeeded
+        # 🎉 If we reach here, password is correct and auth succeeded
 
+        # Save Cognito tokens for API Gateway / other use
+        tokens = auth_response.get("AuthenticationResult", {})
+        access_token = tokens.get("AccessToken")
+        id_token = tokens.get("IdToken")
+
+        # These will be used when calling your protected API Gateway endpoints
+        if access_token:
+            request.session["cognito_access_token"] = access_token
+            print("ACCESS TOKEN:", access_token)
+
+        if id_token:
+            request.session["cognito_id_token"] = id_token
+            print("ACCESS TOKEN:", id_token)
+        
+        # Fetch user details from Cognito
         try:
             user = client.admin_get_user(
                 UserPoolId=settings.COGNITO["user_pool_id"],
@@ -191,6 +206,7 @@ def login_view(request):
 
     # GET
     return render(request, "login.html")
+
 
 
 # ==========================================================

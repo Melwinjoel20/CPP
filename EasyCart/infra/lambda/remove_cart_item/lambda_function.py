@@ -18,7 +18,7 @@ def _cors_headers():
 def lambda_handler(event, context):
     print("Incoming event:", json.dumps(event))
 
-    # Detect method (v2 - API GW HTTP API or v1)
+    # Detect method
     method = (
         event.get("requestContext", {})
              .get("http", {})
@@ -26,7 +26,7 @@ def lambda_handler(event, context):
         or event.get("httpMethod", "")
     ).upper()
 
-    # 0️⃣ OPTIONS preflight
+    # 0️⃣ Preflight
     if method == "OPTIONS":
         return {
             "statusCode": 204,
@@ -34,7 +34,24 @@ def lambda_handler(event, context):
             "body": ""
         }
 
-    # 1️⃣ Parse body safely
+    # -------------------------------
+    # 🔐 1️⃣ Extract user from JWT
+    # -------------------------------
+    auth = event.get("requestContext", {}).get("authorizer", {})
+
+    claims = auth.get("jwt", {}).get("claims", {}) or auth.get("claims", {})
+
+    user_id = claims.get("email") or claims.get("cognito:username")
+
+    if not user_id:
+        return {
+            "statusCode": 401,
+            "headers": _cors_headers(),
+            "body": json.dumps({"error": "Unauthorized: Please log in"})
+        }
+    # -------------------------------
+
+    # 2️⃣ Parse body
     body_str = event.get("body") or "{}"
     try:
         body = json.loads(body_str)
@@ -50,6 +67,33 @@ def lambda_handler(event, context):
             "body": json.dumps({"error": "item_id is required"})
         }
 
-    # 2️⃣ Scan because item_id is NOT the partition key
+    # 3️⃣ Scan to find the item (because item_id is NOT partition key)
     response = table.scan(
         FilterExpression=Attr("item_id").eq(item_id)
+                     & Attr("user_id").eq(user_id)  # 🔒 ensure item belongs to THIS user
+    )
+
+    items = response.get("Items", [])
+
+    if not items:
+        return {
+            "statusCode": 404,
+            "headers": _cors_headers(),
+            "body": json.dumps({"error": "Item not found"})
+        }
+
+    cart_item = items[0]
+
+    # 4️⃣ Delete item using BOTH keys
+    table.delete_item(
+        Key={
+            "user_id": cart_item["user_id"],
+            "item_id": cart_item["item_id"]
+        }
+    )
+
+    return {
+        "statusCode": 200,
+        "headers": _cors_headers(),
+        "body": json.dumps({"message": "Item removed"})
+    }
