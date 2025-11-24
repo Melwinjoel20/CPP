@@ -3,21 +3,35 @@ name: Deploy EasyCart to Elastic Beanstalk (CD)
 on:
   workflow_run:
     workflows: ["Build EasyCart (CI)"]
-    types:
-      - completed
-  workflow_dispatch: 
+    types: [completed]
+  workflow_dispatch:  # allow manual deploy
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+
+    # Allow manual deploy OR auto-deploy only on success
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event_name == 'workflow_run' &&
+        github.event.workflow_run.conclusion == 'success'
+      )
 
     steps:
-      - name: Download build artifact
+      - name: Checkout code (needed for EB CLI config)
+        uses: actions/checkout@v4
+
+      # Download build artifact from CI run
+      - name: Download artifact from CI run
         uses: actions/download-artifact@v4
         with:
           name: easycart-app-zip
+          run-id: ${{ github.event.workflow_run.id }}
           path: .
+
+      - name: List downloaded files (debug)
+        run: ls -al
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -45,4 +59,6 @@ jobs:
 
       - name: Deploy to Elastic Beanstalk
         run: |
-          eb deploy "${{ secrets.EB_ENV_NAME }}" --label "build-${{ github.run_id }}" --staged
+          eb deploy "${{ secrets.EB_ENV_NAME }}" \
+            --label "build-${{ github.run_id }}" \
+            --staged
