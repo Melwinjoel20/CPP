@@ -5,6 +5,7 @@ on:
     workflows: ["Build EasyCart (CI)"]
     types:
       - completed
+  workflow_dispatch: 
 
 jobs:
   deploy:
