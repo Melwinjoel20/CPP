@@ -4,6 +4,7 @@ on:
   workflow_run:
     workflows: ["Build EasyCart (CI)"]
     types: [completed]
+
   workflow_dispatch:
 
 jobs:
@@ -21,17 +22,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install GitHub CLI
-        run: sudo apt-get install -y gh
-
-      - name: Download CI Artifact Folder
-        run: |
-          mkdir -p artifact
-          gh run download ${{ github.event.workflow_run.id }} \
-            -n easycart-app-zip \
-            --dir artifact
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Download CI artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: easycart-app-zip
+          path: artifact
 
       - name: List artifact contents
         run: ls -R artifact
@@ -52,18 +47,4 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
-          aws-region: ${{ secrets.AWS_REGION }}
-
-      - name: EB init
-        run: |
-          cd artifact/build-19648892967/EasyCart
-          eb init "${{ secrets.EB_APP_NAME }}" \
-            --region "${{ secrets.AWS_REGION }}" \
-            --platform "Python 3.9 running on 64bit Amazon Linux 2023" || true
-
-      - name: Deploy to Elastic Beanstalk
-        run: |
-          cd artifact/build-19648892967/EasyCart
-          eb deploy "${{ secrets.EB_ENV_NAME }}" \
-            --label "build-${{ github.run_id }}"
-
+          aws-region: ${{ secret
