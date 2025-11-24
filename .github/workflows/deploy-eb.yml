@@ -2,7 +2,7 @@ name: Deploy to Elastic Beanstalk
 
 on:
   workflow_run:
-    workflows: ["CI - Build and Test"]  # Replace with your actual CI workflow name
+    workflows: ["Build EasyCart (CI)"]  
     types: [completed]
     branches: [main]
   workflow_dispatch:
