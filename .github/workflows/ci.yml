@@ -13,20 +13,19 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # ZIP must be created from the EasyCart directory
       - name: Create deployment bundle
         run: |
           cd EasyCart
           zip -r ../app.zip . \
-            -x "env/*" "__pycache__/*" ".git/*" ".github/*"
+            -x "env/*" "**/__pycache__/*" ".git/*" ".github/*" "*.pyc" "*.egg-info/*"
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
           name: easycart-app-zip
           path: ./app.zip
+          retention-days: 5
