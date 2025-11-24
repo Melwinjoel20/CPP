@@ -2,9 +2,9 @@ name: Build EasyCart (CI)
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
   workflow_dispatch:
 
 permissions:
@@ -14,6 +14,10 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    defaults:
+      run:
+        working-directory: EasyCart  # because this is your Django project folder
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -21,7 +25,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Install dependencies
         run: |
@@ -33,22 +37,23 @@ jobs:
           if [ -f manage.py ]; then
             python manage.py test
           else
-            echo "No Django project found."
+            echo "No manage.py found."
           fi
 
-      - name: Install zip utility
+      - name: Install zip
         run: sudo apt-get update && sudo apt-get install -y zip
 
       - name: Create deployment bundle
         run: |
-          zip -r app.zip . \
-            -x "env/*" "infra/*" "__pycache__/*" ".git/*" ".github/*"
+          zip -r ../app.zip . \
+            -x "env/*" "__pycache__/*" ".git/*" ".github/*" "infra/*"
 
-      - name: Debug - list files
-        run: ls -al .
+      - name: Debug listing
+        run: ls -al ..
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
           name: easycart-app-zip
           path: app.zip
+          # NOTE: Because working-directory is EasyCart/, ../app.zip becomes app.zip to upload
