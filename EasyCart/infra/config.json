@@ -25,7 +25,7 @@
     "sns_topic_arn": "arn:aws:sns:us-east-1:928302362931:EasyCartOrderNotifications",
     "rate_limit": {
         "login": {
-            "limit":1,
+            "limit":10,
             "window": 60
         }
     },
@@ -35,7 +35,6 @@
     "eb_application_name": "easycart-app-ebs-hi",
     "eb_environment_name": "easycart-app-env",
     "eb_cname_prefix": "easycart-dev-env",
-
     "eb_service_role": "LabRole",
     "eb_instance_profile": "LabInstanceProfile"
 }

@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.urls import path
 from . import views
+from . import admins_view as views_admin
 
 urlpatterns = [
      path('base/',views.base,name="base"),
@@ -15,5 +16,10 @@ urlpatterns = [
      path("order-confirmation/", views.order_confirmation, name="order_confirmation"),
      path("verify-otp/", views.verify_otp, name="verify_otp"),
      path("forgot_password/", views.forgot_password, name="forgot_password"),
-     path("reset_password/", views.reset_password, name="reset_password")
+     path("reset_password/", views.reset_password, name="reset_password"),
+     path("admin_dashboard/", views_admin.admin_dashboard, name="admin_dashboard"),
+     path("add-product/", views_admin.admin_add_product, name="admin_add_product"),
+     path("manage-products/", views_admin.admin_manage_products, name="admin_manage_products"),
+     path("delete/<str:category>/<str:product_id>/", views_admin.admin_delete_product, name="admin_delete_product")
+
 ]
