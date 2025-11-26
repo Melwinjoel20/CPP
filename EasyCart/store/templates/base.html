@@ -272,6 +272,13 @@
           <li class="nav-item"><a class="nav-link navbar-link" href="#">Offers</a></li>
           <li class="nav-item"><a class="nav-link navbar-link" href="#">Contact</a></li>
           <li class="nav-item"><a class="nav-link navbar-link" href="{% url 'view_cart' %}">My Cart</a></li>
+          {% if request.session.cognito_groups and 'EasyCartAdmins' in request.session.cognito_groups %}
+        <li class="nav-item">
+            <a class="nav-link navbar-link fw-bold text-danger" href="{% url 'admin_dashboard' %}">
+                <i class="bi bi-shield-lock-fill"></i> Admin
+            </a>
+        </li>
+    {% endif %}
         </ul>
   
         <div class="d-flex align-items-center">

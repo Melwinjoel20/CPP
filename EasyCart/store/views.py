@@ -178,8 +178,14 @@ def login_view(request):
         request.session["user_email"] = email
         request.session["user_name"] = full_name
         request.session["user_id"] = email
+        
+        groups = get_user_groups(email)
+        request.session["cognito_groups"] = groups
+        print("USER GROUPS:", groups)
 
         messages.success(request, f"Welcome, {full_name or email}!")
+        if "EasyCartAdmins" in groups:
+            return redirect("admin_dashboard")  
         return redirect("home")
 
     # GET
@@ -540,3 +546,24 @@ def order_confirmation(request):
     })
 
 
+def get_user_groups(email):
+    client = boto3.client("cognito-idp", region_name=settings.COGNITO["region"])
+    
+    resp = client.admin_list_groups_for_user(
+        UserPoolId=settings.COGNITO["user_pool_id"],
+        Username=email
+    )
+
+    return [g["GroupName"] for g in resp.get("Groups", [])]
+    
+    
+def admin_required(view_func):
+    def wrapper(request, *args, **kwargs):
+        groups = request.session.get("cognito_groups", [])
+
+        if "EasyCartAdmins" not in groups:
+            messages.error(request, "You are not authorized to access the admin panel.")
+            return redirect("home")
+
+        return view_func(request, *args, **kwargs)
+    return wrapper
