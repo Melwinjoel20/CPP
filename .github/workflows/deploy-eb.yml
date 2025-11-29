@@ -41,8 +41,8 @@ jobs:
       - name: Verify environment exists
         run: |
           aws elasticbeanstalk describe-environments \
-            --application-name easycart-app-ebs-hi \
-            --environment-names easycart-app-env \
+            --application-name ${{ secrets.EB_APP_NAME }} \
+            --environment-names ${{ secrets.EB_ENV_NAME }} \
             --region us-east-1
 
       - name: Deploy to Elastic Beanstalk
