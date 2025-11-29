@@ -36,23 +36,23 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
-          aws-region: us-east-1
+          aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Verify environment exists
         run: |
           aws elasticbeanstalk describe-environments \
             --application-name ${{ secrets.EB_APP_NAME }} \
             --environment-names ${{ secrets.EB_ENV_NAME }} \
-            --region us-east-1
+            --region ${{ secrets.AWS_REGION }}
 
       - name: Deploy to Elastic Beanstalk
         run: |
           cd EasyCart
           
-          eb init easycart-app-ebs-hi \
-            --region us-east-1 \
+          eb init ${{ secrets.EB_APP_NAME }} \
+            --region ${{ secrets.AWS_REGION }} \
             --platform "Python 3.9 running on 64bit Amazon Linux 2023"
           
-          eb deploy easycart-app-env \
+          eb deploy ${{ secrets.EB_ENV_NAME }} \
             --label "deploy-${{ github.run_id }}" \
             --timeout 20
