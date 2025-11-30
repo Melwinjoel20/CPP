@@ -13,16 +13,52 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
+      # ---------------------------
+      # 1. Checkout Source Code
+      # ---------------------------
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # ---------------------------
+      # 2. Set up Python (Required for Sonar + Django scanning)
+      # ---------------------------
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      # ---------------------------
+      # 3. Install Dependencies
+      # ---------------------------
+      - name: Install Python dependencies
+        run: |
+          pip install -r EasyCart/requirements.txt
+
+      # ---------------------------
+      # 4. SonarCloud Scan
+      # ---------------------------
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@master
+        with:
+          projectBaseDir: EasyCart
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # ---------------------------
+      # 5. Create Deployment Bundle
+      # ---------------------------
       - name: Create deployment bundle
         run: |
           cd EasyCart
           zip -r ../app.zip . \
             -x "env/*" "**/__pycache__/*" ".git/*" ".github/*" "*.pyc" "*.egg-info/*"
 
+      # ---------------------------
+      # 6. Upload Build Artifact
+      # ---------------------------
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
