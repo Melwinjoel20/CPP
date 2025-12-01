@@ -10,9 +10,7 @@ CONFIG_PATH = "infra/config.json"
 cognito = boto3.client("cognito-idp", region_name=REGION)
 
 
-# -------------------------------------------------------------------
 # Load/save config.json
-# -------------------------------------------------------------------
 def load_config():
     if os.path.exists(CONFIG_PATH):
         with open(CONFIG_PATH) as f:
@@ -23,12 +21,10 @@ def load_config():
 def save_config(data):
     with open(CONFIG_PATH, "w") as f:
         json.dump(data, f, indent=4)
-    print("✔ Updated config.json")
+    print("Updated config.json")
 
 
-# -------------------------------------------------------------------
 # Existence checks
-# -------------------------------------------------------------------
 def pool_exists(pool_id):
     try:
         cognito.describe_user_pool(UserPoolId=pool_id)
@@ -53,12 +49,10 @@ def domain_exists(domain_prefix):
         return False
 
 
-# -------------------------------------------------------------------
-# 1️⃣ Create Pool If Missing
-# -------------------------------------------------------------------
+# Create Pool If Missing
 def create_user_pool_if_needed(config):
     if "user_pool_id" in config and pool_exists(config["user_pool_id"]):
-        print(f"✔ User Pool exists: {config['user_pool_id']}")
+        print(f" User Pool exists: {config['user_pool_id']}")
         return config["user_pool_id"]
 
     print("\n[1] Creating Cognito User Pool...")
@@ -78,15 +72,13 @@ def create_user_pool_if_needed(config):
     )
 
     pool_id = resp["UserPool"]["Id"]
-    print(f"✔ Created User Pool: {pool_id}")
+    print(f" Created User Pool: {pool_id}")
     return pool_id
 
 
-# -------------------------------------------------------------------
 # Safe email template
-# -------------------------------------------------------------------
 def apply_safe_verification_template(user_pool_id):
-    print("→ Applying safe verification email template...")
+    print(" Applying safe verification email template...")
 
     try:
         cognito.update_user_pool(
@@ -103,20 +95,18 @@ def apply_safe_verification_template(user_pool_id):
             },
             EmailConfiguration={"EmailSendingAccount": "COGNITO_DEFAULT"}
         )
-        print("✔ Template applied")
+        print("Template applied")
     except Exception as e:
-        print("⚠ Could NOT update email settings:", e)
+        print(" Could NOT update email settings:", e)
 
 
-# -------------------------------------------------------------------
-# 2️⃣ CREATE CONFIDENTIAL CLIENT (WITH SECRET)
-# -------------------------------------------------------------------
+# CREATE CONFIDENTIAL CLIENT (WITH SECRET)
 def create_app_client_if_needed(config, user_pool_id):
     if (
         "app_client_id" in config 
         and client_exists(user_pool_id, config["app_client_id"])
     ):
-        print(f"✔ App Client exists: {config['app_client_id']}")
+        print(f" App Client exists: {config['app_client_id']}")
         return config["app_client_id"], config.get("app_client_secret")
 
     print("\n[2] Creating Confidential App Client (with secret)...")
@@ -126,22 +116,18 @@ def create_app_client_if_needed(config, user_pool_id):
             UserPoolId=user_pool_id,
             ClientName=f"{PROJECT_NAME}-SecureAppClient",
 
-            # ⭐ MUST be True for secrets
             GenerateSecret=True,
 
-            # ⭐ Hosted UI MUST be disabled or Cognito rejects secret
             AllowedOAuthFlowsUserPoolClient=False,
             AllowedOAuthFlows=[],
             AllowedOAuthScopes=[],
 
-            # ⭐ Enable these for backend password login
             ExplicitAuthFlows=[
                 "ALLOW_USER_PASSWORD_AUTH",
                 "ALLOW_ADMIN_USER_PASSWORD_AUTH",
                 "ALLOW_REFRESH_TOKEN_AUTH",
             ],
 
-            # ⭐ REMOVE callback/logout URLs — not allowed for confidential clients
             CallbackURLs=[],
             LogoutURLs=[],
         )
@@ -149,19 +135,17 @@ def create_app_client_if_needed(config, user_pool_id):
         client_id = resp["UserPoolClient"]["ClientId"]
         client_secret = resp["UserPoolClient"]["ClientSecret"]
 
-        print("✔ Created Confidential Client:")
+        print(" Created Confidential Client:")
         print("  ID:", client_id)
         print("  SECRET:", client_secret)
 
         return client_id, client_secret
 
     except Exception as e:
-        print("❌ Failed to create app client:", str(e))
+        print("Failed to create app client:", str(e))
         return None, None
 
-# -------------------------------------------------------------------
-# 3️⃣ Create Domain If Missing
-# -------------------------------------------------------------------
+#  Create Domain If Missing
 def create_domain_if_needed(config, user_pool_id):
     if "domain_url" in config:
         prefix = config["domain_url"].split("//")[1].split(".")[0]
@@ -179,7 +163,7 @@ def create_domain_if_needed(config, user_pool_id):
     )
 
     domain = f"https://{prefix}.auth.{REGION}.amazoncognito.com"
-    print(f"✔ Created Domain: {domain}")
+    print(f"Created Domain: {domain}")
     return domain
 
 
@@ -187,7 +171,7 @@ def create_domain_if_needed(config, user_pool_id):
 # MAIN DRIVER
 # -------------------------------------------------------------------
 def main():
-    print("🚀 EasyCart Cognito Auto-Setup — Confidential Client Mode")
+    print(" EasyCart Cognito Auto-Setup — Confidential Client Mode")
 
     config = load_config()
 
@@ -210,7 +194,7 @@ def main():
 
     save_config(config)
 
-    print("\n🎉 Cognito setup complete — Confidential App Client ready.")
+    print("\n Cognito setup complete — Confidential App Client ready.")
 
 
 if __name__ == "__main__":

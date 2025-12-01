@@ -25,10 +25,6 @@ def create_bucket():
             print(f"ℹ Bucket already exists: {BUCKET_NAME}")
         else:
             raise e
-
-    # ---------------------------------------------
-    # 📌 APPLY BUCKET POLICY (PUBLIC READ ACCESS)
-    # ---------------------------------------------
     policy = {
         "Version": "2012-10-17",
         "Statement": [
@@ -68,7 +64,7 @@ def upload_logo():
     object_key = "images/EasyCartLogo.png"
 
     if logo_exists():
-        print("ℹ Logo already exists in S3, skipping upload.")
+        print(" Logo already exists in S3, skipping upload.")
     else:
         s3.upload_file(
             logo_path,
@@ -90,10 +86,10 @@ def save_config(url):
     with open(config_path, "w") as f:
         json.dump(data, f, indent=4)
 
-    print("✔ S3 logo URL saved in config.json")
+    print(" S3 logo URL saved in config.json")
 
 def main():
-    print("🚀 Setting up S3 for EasyCart...")
+    print(" Setting up S3 for EasyCart...")
     create_bucket()
     url = upload_logo()
     save_config(url)

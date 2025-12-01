@@ -17,7 +17,7 @@ def load_config():
 def save_config(data):
     with open(CONFIG_PATH, "w") as f:
         json.dump(data, f, indent=4)
-    print("✔ config.json updated")
+    print(" config.json updated")
 
 
 def table_exists(dynamodb, table_name):
@@ -32,7 +32,7 @@ def create_table_if_needed(region, table_name):
     dynamodb = boto3.client("dynamodb", region_name=region)
 
     if table_exists(dynamodb, table_name):
-        print(f"✔ Table already exists: {table_name}")
+        print(f" Table already exists: {table_name}")
         return
 
     print(f"\n[1] Creating table: {table_name} ...")
@@ -48,11 +48,11 @@ def create_table_if_needed(region, table_name):
         BillingMode="PAY_PER_REQUEST"
     )
 
-    print("⏳ Waiting for table to be ACTIVE...")
+    print("Waiting for table to be ACTIVE...")
     waiter = dynamodb.get_waiter("table_exists")
     waiter.wait(TableName=table_name)
 
-    print(f"✔ Created table: {table_name}")
+    print(f" Created table: {table_name}")
 
 
 def seed_data(region, table_name, products):
@@ -74,11 +74,11 @@ def seed_data(region, table_name, products):
             }
         )
 
-        print(f"✔ Added: {p['name']} → {p_id}")
+        print(f" Added: {p['name']} → {p_id}")
 
 
 def main():
-    print("🚀 EasyCart DynamoDB Setup — Multi-table Mode")
+    print(" EasyCart DynamoDB Setup — Multi-table Mode")
 
     config = load_config()
     region = config.get("region", "us-east-1")
@@ -136,7 +136,7 @@ def main():
         create_table_if_needed(region, table_name)
         seed_data(region, table_name, items)
 
-    print("\n🎉 All DynamoDB tables created + seeded successfully!")
+    print("\n All DynamoDB tables created + seeded successfully!")
 
 
 if __name__ == "__main__":
