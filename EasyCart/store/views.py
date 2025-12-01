@@ -545,3 +545,6 @@ def admin_required(view_func):
 
         return view_func(request, *args, **kwargs)
     return wrapper
+
+def offers(request):
+    return render(request, "offers.html")
