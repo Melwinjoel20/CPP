@@ -5,7 +5,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <!-- Bootstrap & Icons -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
 
@@ -27,7 +26,6 @@
       text-decoration: none;
     }
 
-    /* 🧭 NAVBAR ---------------------------------------------------- */
     .navbar-main {
       background: linear-gradient(90deg, #ffffff, #f3f9ff);
       border-bottom: 1px solid #d0e1f9;
@@ -96,7 +94,6 @@
       margin-top: 12px;
     }
 
-    /* 🎯 SEARCH FORM ---------------------------------------------- */
     .search-form-container {
       max-width: 900px;
       background-color: #ffffff;
@@ -109,7 +106,6 @@
       color: #003366;
     }
 
-    /* 💙 BUTTON STYLES -------------------------------------------- */
     .btn-blue-outline {
       border-color: #007bff;
       color: #007bff;
@@ -135,7 +131,6 @@
       transform: translateY(-1px);
     }
 
-    /* 🧱 MAIN CONTENT --------------------------------------------- */
     main {
       flex: 1 0 auto;
     }
@@ -157,7 +152,6 @@
       margin-bottom: 1rem;
     }
 
-    /* 🦶 FOOTER ---------------------------------------------------- */
     .footer-main {
       background: linear-gradient(90deg, #f8faff, #ecf4ff);
       border-top: 1px solid #c8defc;
@@ -176,7 +170,7 @@
     }
     
     .nav-login-btn {
-      background-color: #1d3557;       /* Deep blue */
+      background-color: #1d3557;       
       color: #ffffff;
       border: 2px solid transparent;
       border-radius: 50px;
@@ -191,7 +185,7 @@
     
     /* Hover animation */
     .nav-login-btn:hover {
-      background-color: #457b9d;       /* Light blue */
+      background-color: #457b9d;       
       border-color: #1d3557;
       color: #ffffff;
       transform: translateY(-3px);
@@ -218,12 +212,9 @@
 </head>
 
 <body>
-  <!-- 🧭 NAVBAR -->
-  <!-- 🧭 NAVBAR -->
   <nav class="navbar navbar-expand-lg fixed-top navbar-main">
     <div class="container-fluid">
   
-      <!-- Brand With S3 Logo -->
       <a class="navbar-brand d-flex align-items-center gap-2" href="{% url 'home' %}">
         <img src="{{ SIGNED_LOGO_URL }}" alt="EasyCart Logo" class="brand-logo">
         <span class="navbar-brand-title">EasyCart</span>
@@ -304,7 +295,6 @@
   </nav>
 
 
-  <!-- 🦸 HERO SECTION -->
   {% block hero %}
   <section class="hero-section text-center">
     <h1 class="hero-title">Welcome to EasyCart</h1>
@@ -328,7 +318,6 @@
   </section>
   {% endblock %}
 
-  <!-- 🧱 MAIN CONTENT -->
   <main>
     {% block main_content %}
     <div class="content-wrapper">
@@ -341,12 +330,10 @@
     {% endblock %}
   </main>
 
-  <!-- 🦶 FOOTER -->
   <footer class="footer-main">
     <p>&copy; EasyCart</p>
   </footer>
 
-  <!-- JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
   {% block extra_scripts %}{% endblock %}
 </body>

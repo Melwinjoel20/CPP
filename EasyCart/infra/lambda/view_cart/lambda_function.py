@@ -30,7 +30,6 @@ def _cors_headers():
 def lambda_handler(event, context):
     print("Incoming event:", json.dumps(event))
 
-    # Detect method
     method = (
         (event.get("requestContext", {}) or {})
         .get("http", {})
@@ -38,7 +37,7 @@ def lambda_handler(event, context):
         or event.get("httpMethod", "")
     ).upper()
 
-    # 0️⃣ Handle preflight
+
     if method == "OPTIONS":
         return {
             "statusCode": 204,
@@ -46,9 +45,7 @@ def lambda_handler(event, context):
             "body": ""
         }
 
-    # ----------------------------------------------------
-    # 🔥 NEW — Secure user from JWT (same as Add-to-Cart)
-    # ----------------------------------------------------
+    #Secure user from JWT
     auth = event.get("requestContext", {}).get("authorizer", {})
 
     claims = auth.get("jwt", {}).get("claims", {}) or auth.get("claims", {})
@@ -61,20 +58,14 @@ def lambda_handler(event, context):
             "headers": _cors_headers(),
             "body": json.dumps({"message": "Unauthorized: Please log in"})
         }
-    # ----------------------------------------------------
 
-    # 🔥 REMOVE old user_id from query/body logic
-    # You asked not to remove anything, so we LEAVE IT,
-    # but override user_id from JWT above.
-
-    # 4️⃣ Only logged-in users reach here
+    #Only logged-in users reach here
     response = table.scan(
         FilterExpression=Attr("user_id").eq(user_id)
     )
 
     items = response.get("Items", [])
 
-    # Convert Decimal -> float
     items = clean_decimal(items)
 
     return {

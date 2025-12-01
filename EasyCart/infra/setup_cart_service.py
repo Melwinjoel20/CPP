@@ -6,9 +6,7 @@ from botocore.exceptions import ClientError
 CONFIG_PATH = "infra/config.json"
 
 
-# =========================
 # Config helpers
-# =========================
 
 def load_config():
     with open(CONFIG_PATH) as f:
@@ -18,12 +16,10 @@ def load_config():
 def save_config(cfg):
     with open(CONFIG_PATH, "w") as f:
         json.dump(cfg, f, indent=4)
-    print("✔ Updated config.json")
+    print(" Updated config.json")
 
 
-# =========================
 # DynamoDB helpers
-# =========================
 
 def create_cart_table(region):
     dynamodb = boto3.client("dynamodb", region_name=region)
@@ -36,7 +32,7 @@ def create_cart_table(region):
     except ClientError:
         pass
 
-    print("🛠 Creating DynamoDB table: UserCart")
+    print(" Creating DynamoDB table: UserCart")
 
     dynamodb.create_table(
         TableName=table_name,
@@ -54,7 +50,7 @@ def create_cart_table(region):
     waiter = dynamodb.get_waiter("table_exists")
     waiter.wait(TableName=table_name)
 
-    print("✔ UserCart table created")
+    print(" UserCart table created")
     return table_name
 
 
@@ -64,12 +60,12 @@ def create_orders_table(region):
 
     try:
         dynamodb.describe_table(TableName=table_name)
-        print("✔ DynamoDB table already exists:", table_name)
+        print(" DynamoDB table already exists:", table_name)
         return table_name
     except ClientError:
         pass
 
-    print("🛠 Creating DynamoDB table: Orders")
+    print(" Creating DynamoDB table: Orders")
 
     dynamodb.create_table(
         TableName=table_name,
@@ -85,13 +81,11 @@ def create_orders_table(region):
     waiter = dynamodb.get_waiter("table_exists")
     waiter.wait(TableName=table_name)
 
-    print("✔ Orders table created")
+    print(" Orders table created")
     return table_name
 
 
-# =========================
 # SNS helpers
-# =========================
 
 def create_sns_topic(region):
     sns = boto3.client("sns", region_name=region)
@@ -110,8 +104,8 @@ def subscribe_email_to_sns(region, topic_arn, email):
         ReturnSubscriptionArn=False
     )
 
-    print(f"✔ Subscription request sent to {email}")
-    print("⚠️ NOTE: Email owner must click confirm link once (AWS requirement)")
+    print(f" Subscription request sent to {email}")
+    print(" NOTE: Email owner must click confirm link once (AWS requirement)")
 
 
 # =========================
@@ -119,11 +113,7 @@ def subscribe_email_to_sns(region, topic_arn, email):
 # =========================
 
 def create_lambda(region, fn_name, file_path, sns_topic_arn=None):
-    """
-    Deploy or update a Lambda function from a local ZIP.
-    If sns_topic_arn is provided, it will inject it into lambda_function.py
-    (used for place_order, where code has a {{SNS_TOPIC_ARN}} placeholder).
-    """
+
     import zipfile
     import io
 
@@ -147,25 +137,24 @@ def create_lambda(region, fn_name, file_path, sns_topic_arn=None):
         zip_bytes = zip_buffer.getvalue()
 
     else:
-        # Other lambdas → use normal ZIP file on disk
         with open(file_path, "rb") as f:
             zip_bytes = f.read()
 
     # Deploy lambda (update or create)
     try:
         lambda_client.get_function(FunctionName=fn_name)
-        print(f"✔ Lambda exists: {fn_name}")
+        print(f" Lambda exists: {fn_name}")
 
         lambda_client.update_function_code(
             FunctionName=fn_name,
             ZipFile=zip_bytes,
             Publish=True
         )
-        print(f"🔄 Updated Lambda code for {fn_name}")
+        print(f" Updated Lambda code for {fn_name}")
         return fn_name
 
     except lambda_client.exceptions.ResourceNotFoundException:
-        print(f"🛠 Creating Lambda: {fn_name}")
+        print(f" Creating Lambda: {fn_name}")
         lambda_client.create_function(
             FunctionName=fn_name,
             Runtime="python3.9",
@@ -175,7 +164,7 @@ def create_lambda(region, fn_name, file_path, sns_topic_arn=None):
             Timeout=15,
             Publish=True
         )
-        print(f"✔ Lambda created: {fn_name}")
+        print(f" Lambda created: {fn_name}")
         return fn_name
 
 
@@ -195,7 +184,7 @@ def update_lambda_env(region, fn_name, topic_arn):
         }
     )
 
-    print(f"✔ Environment variable added to {fn_name}")
+    print(f" Environment variable added to {fn_name}")
 
 
 # (Optional) Function URL helper – unused now, but kept if you ever want it.
@@ -214,7 +203,7 @@ def enable_function_url(fn_name, region):
         "AllowHeaders": []
     }
 
-    print(f"🔧 Resetting corrupted CORS for {fn_name}...")
+    print(f" Resetting corrupted CORS for {fn_name}...")
 
     try:
         client.delete_function_url_config(FunctionName=fn_name)
@@ -245,11 +234,11 @@ def enable_function_url(fn_name, region):
         )
     except ClientError as e:
         if "already exists" in str(e):
-            print(f"ℹ Permission already exists for {fn_name}")
+            print(f" Permission already exists for {fn_name}")
         else:
             raise e
 
-    print(f"✔ Function URL Enabled → {url}")
+    print(f" Function URL Enabled → {url}")
     return url
 
 
@@ -258,19 +247,19 @@ def enable_function_url(fn_name, region):
 # =========================
 
 def main():
-    print("\n🚀 Setting up CART SERVICE (DynamoDB + Lambdas + SNS)\n")
+    print("\n Setting up CART SERVICE (DynamoDB + Lambdas + SNS)\n")
 
     cfg = load_config()
     region = cfg["region"]
 
-    # 1️⃣ Create DynamoDB tables
+    #  Create DynamoDB tables
     cart_table = create_cart_table(region)
     cfg["cart_table"] = cart_table
 
     orders_table = create_orders_table(region)
     cfg["orders_table"] = orders_table
 
-    # 2️⃣ SNS topic + subscription
+    #  SNS topic + subscription
     topic_arn = create_sns_topic(region)
     cfg["sns_topic_arn"] = topic_arn
     save_config(cfg)
@@ -278,7 +267,7 @@ def main():
     email_to_subscribe = "melwinpintoir@gmail.com"
     subscribe_email_to_sns(region, topic_arn, email_to_subscribe)
 
-    # 3️⃣ Deploy Lambda functions (no API Gateway wiring here)
+    #  Deploy Lambda functions (no API Gateway wiring here)
     lambdas = {
         "add_to_cart": "infra/lambda/add_to_cart.zip",
         "view_cart": "infra/lambda/view_cart.zip",
@@ -295,8 +284,6 @@ def main():
         else:
             create_lambda(region, fn_name, path)
 
-    # ❗ IMPORTANT: we do NOT touch lambda_cart_endpoints here.
-    # You have manually configured the API Gateway URLs in config.json.
 
     save_config(cfg)
 

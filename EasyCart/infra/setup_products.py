@@ -7,9 +7,7 @@ from botocore.exceptions import ClientError
 CONFIG_PATH = "infra/config.json"
 
 
-# ------------------------------------------------------------
 # CONFIG HELPERS
-# ------------------------------------------------------------
 def load_config():
     with open(CONFIG_PATH) as f:
         return json.load(f)
@@ -21,9 +19,7 @@ def save_config(data):
     print("✔ config.json updated")
 
 
-# ------------------------------------------------------------
 # S3 FUNCTIONS — Upload product images
-# ------------------------------------------------------------
 def upload_product_images(bucket, region, folder):
     s3 = boto3.client("s3", region_name=region)
 
@@ -36,7 +32,6 @@ def upload_product_images(bucket, region, folder):
         local_path = os.path.join(folder, file_name)
         s3_key = f"product-images/{file_name}"
 
-        # upload file (no ACL, that's fine)
         s3.upload_file(
             local_path,
             bucket,
@@ -44,7 +39,7 @@ def upload_product_images(bucket, region, folder):
             ExtraArgs={"ContentType": "image/jpeg"}
         )
 
-        # ❗️IMPORTANT: store ONLY the S3 key, not a URL
+        # store ONLY the S3 key, not a URL
         uploaded[file_name] = s3_key
         print(f"✔ Uploaded {file_name} → key = {s3_key}")
 
@@ -52,9 +47,7 @@ def upload_product_images(bucket, region, folder):
 
 
 
-# ------------------------------------------------------------
 # DYNAMODB FUNCTIONS
-# ------------------------------------------------------------
 def table_exists(client, table_name):
     try:
         client.describe_table(TableName=table_name)
@@ -127,9 +120,7 @@ def update_images(region, table_name, mapping):
                 break
 
 
-# ------------------------------------------------------------
 # MAIN ORCHESTRATOR
-# ------------------------------------------------------------
 def main():
     config = load_config()
 
@@ -140,10 +131,10 @@ def main():
 
     print("\n🚀 Starting EasyCart PRODUCT SETUP\n")
 
-    # 1️⃣ Upload product images
+    #  Upload product images
     uploaded_mapping = upload_product_images(bucket, region, images_folder)
 
-    # 2️⃣ Create + Seed DynamoDB tables
+    # Create + Seed DynamoDB tables
     SAMPLE_DATA = {
         "Phones": [
             {"name": "iPhone 14 Pro", "description": "A16 Bionic chip", "price": 1099},

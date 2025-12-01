@@ -11,7 +11,6 @@
 
     <div class="row">
 
-        <!-- LEFT: CUSTOMER DETAILS -->
         <div class="col-md-7">
 
             <div class="card shadow-sm p-4 mb-4">
@@ -91,7 +90,7 @@
         </div>
 
 
-        <!-- RIGHT: ORDER SUMMARY -->
+
         <div class="col-md-5">
 
             <div class="card shadow-sm p-4 mb-4">
@@ -125,7 +124,7 @@ const VIEW_CART_URL = "{{ VIEW_CART_URL }}";
 const PLACE_ORDER_URL = "{{ PLACE_ORDER_URL }}";
 const USER_ID = "{{ request.session.user_id|default:'guest123' }}";
 
-// 🔐 ID token from session (same pattern as product & cart pages)
+//  ID token from session 
 const ID_TOKEN = "{{ request.session.cognito_id_token|default:'' }}";
 const LOGIN_URL = "{% url 'login' %}";
 
@@ -135,7 +134,7 @@ if (!ID_TOKEN) {
     window.location.href = LOGIN_URL;
 }
 
-// 🟦 Load cart items for summary
+// Load cart items for summary
 async function loadOrderSummary() {
     const res = await fetch(VIEW_CART_URL, {
         method: "GET",
@@ -173,7 +172,7 @@ async function loadOrderSummary() {
 }
 
 
-// 🟩 Place Order
+// Place Order
 document.getElementById("place-order-btn").addEventListener("click", async () => {
 
     // Gather customer form data
@@ -237,7 +236,6 @@ document.getElementById("place-order-btn").addEventListener("click", async () =>
 });
 
 
-// Load summary at page load
 loadOrderSummary();
 
 </script>

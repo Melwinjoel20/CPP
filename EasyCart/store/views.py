@@ -19,9 +19,7 @@ def home(request):
     
     return render(request, 'home.html')
 
-# ==========================================================
 # Helpers
-# ==========================================================
 
 def get_cognito_client():
     return boto3.client(
@@ -54,9 +52,7 @@ def get_secret_hash(username: str) -> str:
     return base64.b64encode(dig).decode("utf-8")
 
 
-# ==========================================================
 # LOGIN
-# ==========================================================
 
 def login_view(request):
     if request.method == "POST":
@@ -70,7 +66,6 @@ def login_view(request):
         # Per-user rate limit
         key = f"login:{email}"
 
-        # ❗ No silent fallback: if import missing, app errors (correct)
         allowed = check_rate_limit(
             key,
             limit=settings.RATE_LIMIT_LOGIN_LIMIT,
@@ -140,7 +135,7 @@ def login_view(request):
             messages.error(request, f"Login failed: {str(e)}")
             return redirect("login")
 
-        # 🎉 If we reach here, password is correct and auth succeeded
+        #  If we reach here, password is correct and auth succeeded
         tokens = auth_response.get("AuthenticationResult", {})
         access_token = tokens.get("AccessToken")
         id_token = tokens.get("IdToken")
@@ -192,9 +187,7 @@ def login_view(request):
     return render(request, "login.html")
 
 
-# ==========================================================
 # LOGOUT
-# ==========================================================
 
 def logout_view(request):
     request.session.flush()
@@ -203,9 +196,7 @@ def logout_view(request):
     return redirect("login")
 
 
-# ==========================================================
 # REGISTER
-# ==========================================================
 
 def register(request):
     if request.method == "POST":
@@ -247,9 +238,8 @@ def register(request):
                     return redirect("login")
                 except Exception as e:
                     messages.warning(request, f"Auto-confirm skipped: {e}")
-                    # fall through to OTP flow
 
-            # Normal: send OTP and redirect to verify page
+            #send OTP and redirect to verify page
             request.session["pending_email"] = email
             messages.success(
                 request,
@@ -277,13 +267,10 @@ def register(request):
             messages.error(request, f"Error: {str(e)}")
             return redirect("register")
 
-    # GET
     return render(request, "register.html")
 
 
-# ==========================================================
 # VERIFY OTP (CONFIRM SIGNUP)
-# ==========================================================
 
 def verify_otp(request):
     email = request.session.get("pending_email")
@@ -337,9 +324,7 @@ def verify_otp(request):
     return render(request, "verify_otp.html", {"email": email})
 
 
-# ==========================================================
 # FORGOT PASSWORD
-# ==========================================================
 
 def cognito_forgot_password(username: str):
     client = get_cognito_client()
@@ -378,9 +363,7 @@ def forgot_password(request):
     print("FORGOT PASSWORD RESPONSE:", res)
 
 
-# ==========================================================
 # RESET PASSWORD (CONFIRM FORGOT PASSWORD)
-# ==========================================================
 
 def cognito_confirm_new_password(username: str, code: str, new_password: str):
     client = get_cognito_client()
@@ -459,11 +442,8 @@ def generate_presigned_image_url(key: str):
 
 def products(request, category=None):
     categories = get_all_categories()  
-    # Example: ["Accessories", "Laptops", "Phones"]
 
-    # ---------------------------
-    # 🔍 SEARCH LOGIC (NEW PART)
-    # ---------------------------
+ 
     search = request.GET.get("search", "").strip().lower()
 
     if search:
@@ -480,15 +460,13 @@ def products(request, category=None):
                 matched_category = table_name
                 break
 
-        # If search matched → override the category and load that table
+        # If search matched override the category and load that table
         if matched_category:
             category = matched_category
         else:
-            category = None   # show ALL products
+            category = None  
 
-    # ---------------------------
-    # EXISTING CODE CONTINUES
-    # ---------------------------
+   
 
     dynamodb = boto3.resource("dynamodb", region_name=settings.COGNITO["region"])
     items = []

@@ -21,7 +21,7 @@ def save_config(data):
     os.makedirs(os.path.dirname(CONFIG_PATH), exist_ok=True)
     with open(CONFIG_PATH, "w") as f:
         json.dump(data, f, indent=4)
-    print("✔ config.json updated")
+    print(" config.json updated")
 
 
 def table_exists(dynamodb, table_name):
@@ -36,10 +36,10 @@ def create_admin_table_if_needed(region, table_name):
     dynamodb = boto3.client("dynamodb", region_name=region)
 
     if table_exists(dynamodb, table_name):
-        print(f"✔ Table already exists: {table_name}")
+        print(f" Table already exists: {table_name}")
         return
 
-    print(f"\n[1] Creating table: {table_name} ...")
+    print(f"\n Creating table: {table_name} ...")
 
     dynamodb.create_table(
         TableName=table_name,
@@ -56,7 +56,7 @@ def create_admin_table_if_needed(region, table_name):
     waiter = dynamodb.get_waiter("table_exists")
     waiter.wait(TableName=table_name)
 
-    print(f"✔ Created table: {table_name}")
+    print(f" Created table: {table_name}")
 
 
 def create_admin_user(region, table_name, email, password, role="SUPER_ADMIN"):
@@ -77,11 +77,11 @@ def create_admin_user(region, table_name, email, password, role="SUPER_ADMIN"):
     }
 
     table.put_item(Item=item)
-    print(f"✔ Added admin user: {email} ({role})")
+    print(f" Added admin user: {email} ({role})")
 
 
 def main():
-    print("🚀 EasyCart DynamoDB Setup — Admin Users")
+    print(" EasyCart DynamoDB Setup — Admin Users")
 
     config = load_config()
     region = config.get("region", "us-east-1")
@@ -100,22 +100,22 @@ def main():
     print("\n[2] Create initial admin user")
     email = input("Admin email: ").strip()
     if not email:
-        print("✖ Email is required. Exiting.")
+        print(" Email is required. Exiting.")
         return
 
     password = input("Admin password: ").strip()
     if not password:
-        print("✖ Password is required. Exiting.")
+        print(" Password is required. Exiting.")
         return
 
     role = input("Role (ADMIN/SUPER_ADMIN) [SUPER_ADMIN]: ").strip().upper() or "SUPER_ADMIN"
     if role not in ("ADMIN", "SUPER_ADMIN"):
-        print("⚠ Invalid role, defaulting to ADMIN")
+        print("Invalid role, defaulting to ADMIN")
         role = "ADMIN"
 
     create_admin_user(region, table_name, email, password, role)
 
-    print("\n🎉 Admin users table ready and initial user created!")
+    print("\n Admin users table ready and initial user created!")
 
 
 if __name__ == "__main__":
