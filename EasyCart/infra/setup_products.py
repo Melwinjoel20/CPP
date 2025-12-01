@@ -7,9 +7,8 @@ from botocore.exceptions import ClientError
 CONFIG_PATH = "infra/config.json"
 
 
-# ------------------------------------------------------------
 # CONFIG HELPERS
-# ------------------------------------------------------------
+
 def load_config():
     with open(CONFIG_PATH) as f:
         return json.load(f)
@@ -18,12 +17,12 @@ def load_config():
 def save_config(data):
     with open(CONFIG_PATH, "w") as f:
         json.dump(data, f, indent=4)
-    print("✔ config.json updated")
+    print(" config.json updated")
 
 
-# ------------------------------------------------------------
+
 # S3 FUNCTIONS — Upload product images
-# ------------------------------------------------------------
+
 def upload_product_images(bucket, region, folder):
     s3 = boto3.client("s3", region_name=region)
 
@@ -46,15 +45,13 @@ def upload_product_images(bucket, region, folder):
 
         # ❗️IMPORTANT: store ONLY the S3 key, not a URL
         uploaded[file_name] = s3_key
-        print(f"✔ Uploaded {file_name} → key = {s3_key}")
+        print(f" Uploaded {file_name} → key = {s3_key}")
 
     return uploaded
 
 
-
-# ------------------------------------------------------------
 # DYNAMODB FUNCTIONS
-# ------------------------------------------------------------
+
 def table_exists(client, table_name):
     try:
         client.describe_table(TableName=table_name)
@@ -82,7 +79,7 @@ def create_table(region, table_name):
     waiter = client.get_waiter("table_exists")
     waiter.wait(TableName=table_name)
 
-    print(f"✔ Created DynamoDB table → {table_name}")
+    print(f" Created DynamoDB table → {table_name}")
 
 
 def seed_table(region, table_name, products):
@@ -104,7 +101,7 @@ def seed_table(region, table_name, products):
             }
         )
 
-        print(f"✔ Added: {p['name']} → {pid}")
+        print(f" Added: {p['name']} → {pid}")
 
 
 def update_images(region, table_name, mapping):
@@ -127,9 +124,9 @@ def update_images(region, table_name, mapping):
                 break
 
 
-# ------------------------------------------------------------
+
 # MAIN ORCHESTRATOR
-# ------------------------------------------------------------
+
 def main():
     config = load_config()
 
@@ -138,7 +135,7 @@ def main():
     tables = config["dynamodb_tables"]
     images_folder = config["product_images_folder"]
 
-    print("\n🚀 Starting EasyCart PRODUCT SETUP\n")
+    print("\n Starting EasyCart PRODUCT SETUP\n")
 
     # 1️⃣ Upload product images
     uploaded_mapping = upload_product_images(bucket, region, images_folder)
@@ -164,7 +161,7 @@ def main():
         seed_table(region, table, SAMPLE_DATA[table])
         update_images(region, table, uploaded_mapping)
 
-    print("\n🎉 ALL DONE — Products + Images + Tables set up correctly!\n")
+    print("\n ALL DONE — Products + Images + Tables set up correctly!\n")
 
 
 if __name__ == "__main__":

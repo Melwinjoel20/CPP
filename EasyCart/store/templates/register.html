@@ -2,12 +2,10 @@
 {% load static %}
 
 {% block hero %}
-<!-- No hero on register page -->
 {% endblock %}
 
 {% block content %}
 <style>
-    /* Register Card Styling (Matches EasyCart Theme) */
     .ec-register-card {
         background: #ffffff;
         border-radius: 18px;
@@ -55,14 +53,12 @@
         transform: translateY(-2px);
     }
 
-    /* Success/Warning/Error Message Styling */
     .ec-alert {
         border-radius: 12px;
         font-size: 0.9rem;
         font-weight: 500;
     }
 
-    /* Fade-in animation */
     @keyframes fadeIn {
         from { opacity: 0; transform: translateY(10px); }
         to { opacity: 1; transform: translateY(0); }

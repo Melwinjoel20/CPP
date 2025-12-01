@@ -62,10 +62,8 @@ def lambda_handler(event, context):
             "headers": _cors_headers(),
             "body": ""
         }
-
-    # -------------------------------
-    # 🔥 SECURE USER FROM JWT
-    # -------------------------------
+-
+    # SECURE USER FROM JWT
     auth = event.get("requestContext", {}).get("authorizer", {})
     claims = auth.get("jwt", {}).get("claims", {}) or auth.get("claims", {})
 
@@ -78,9 +76,7 @@ def lambda_handler(event, context):
             "headers": _cors_headers(),
             "body": json.dumps({"error": "Unauthorized: Please log in"})
         }
-    # -------------------------------
 
-    # 1️⃣ Parse body
     body_str = event.get("body") or "{}"
     try:
         body = json.loads(body_str)
@@ -90,7 +86,7 @@ def lambda_handler(event, context):
     customer = body.get("customer") or {}
     payment_method = body.get("payment_method", "card")
 
-    # 2️⃣ Load cart items
+    #Load cart items
     cart_response = cart_table.scan(
         FilterExpression=Attr("user_id").eq(user_id)
     )
@@ -104,17 +100,17 @@ def lambda_handler(event, context):
             "body": json.dumps({"error": "Cart is empty"})
         }
 
-    # 3️⃣ Calculate total
+    #Calculate total
     total = sum(i.get("price", 0) * i.get("qty", 1) for i in items)
 
-    # 4️⃣ Order ID
+    #Order ID
     order_id = str(uuid.uuid4())
 
-    # 5️⃣ Convert for DynamoDB
+    #Convert for DynamoDB
     items_dynamo = to_decimal(items)
     total_dynamo = Decimal(str(total))
 
-    # 6️⃣ Save order
+    # ⃣ Save order
     orders_table.put_item(
         Item={
             "order_id": order_id,
@@ -128,13 +124,13 @@ def lambda_handler(event, context):
         }
     )
 
-    # 7️⃣ Clear cart
+    #Clear cart
     for item in items:
         cart_table.delete_item(
             Key={"user_id": user_id, "item_id": item["item_id"]}
         )
 
-    # 8️⃣ SNS notify
+    #SNS notify
     customer_email = customer.get("email")
 
     if SNS_TOPIC_ARN and customer_email:

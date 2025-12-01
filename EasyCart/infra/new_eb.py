@@ -20,7 +20,7 @@ def load_config():
 def save_config(data):
     with open(CONFIG_PATH, "w") as f:
         json.dump(data, f, indent=4)
-    print("✔ Updated config.json")
+    print("Updated config.json")
 
 
 # -------------------------------------------------------------------
@@ -38,7 +38,7 @@ def ensure_application(eb, app_name):
     resp = eb.describe_applications(ApplicationNames=[app_name])
 
     if resp.get("Applications"):
-        print(f"✔ Application exists: {app_name}")
+        print(f"Application exists: {app_name}")
         return
 
     print(f"Creating application '{app_name}'...")
@@ -46,7 +46,7 @@ def ensure_application(eb, app_name):
         ApplicationName=app_name,
         Description="EasyCart Elastic Beanstalk Application"
     )
-    print("✔ Application created")
+    print("Application created")
 
 
 # -------------------------------------------------------------------
@@ -67,7 +67,7 @@ def get_latest_platform(eb):
 
     platforms = resp.get("PlatformSummaryList", [])
     if not platforms:
-        raise RuntimeError("❌ No Python EB platforms found!")
+        raise RuntimeError("No Python EB platforms found!")
 
     ready = [p for p in platforms if p.get("PlatformStatus") in (None, "Ready")]
     ready.sort(key=lambda p: p["PlatformArn"], reverse=True)
@@ -135,14 +135,14 @@ def ensure_environment(eb, config):
         ]
     )
 
-    print(f"🚀 Environment creation started: {resp['EnvironmentId']}")
+    print(f"Environment creation started: {resp['EnvironmentId']}")
 
 
 # -------------------------------------------------------------------
 # MAIN
 # -------------------------------------------------------------------
 def main():
-    print("🚀 Running Elastic Beanstalk deployment")
+    print(" Running Elastic Beanstalk deployment")
 
     config = load_config()
 
@@ -157,14 +157,14 @@ def main():
 
     for r in required:
         if r not in config:
-            raise RuntimeError(f"❌ Missing '{r}' in config.json")
+            raise RuntimeError(f"Missing '{r}' in config.json")
 
     eb = get_eb(config["region"])
 
     ensure_application(eb, config["eb_application_name"])
     ensure_environment(eb, config)
 
-    print("✔ EB deployment script finished.")
+    print("EB deployment script finished.")
 
 
 if __name__ == "__main__":

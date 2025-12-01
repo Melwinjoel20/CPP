@@ -12,7 +12,7 @@
   <title>{% block title %}EasyCart Store{% endblock %}</title>
 
   <style>
-    /* 🌐 GLOBAL ---------------------------------------------------- */
+    
     html, body {
       height: 100%;
       margin: 0;
@@ -27,7 +27,7 @@
       text-decoration: none;
     }
 
-    /* 🧭 NAVBAR ---------------------------------------------------- */
+
     .navbar-main {
       background: linear-gradient(90deg, #ffffff, #f3f9ff);
       border-bottom: 1px solid #d0e1f9;
@@ -68,7 +68,7 @@
       width: 100%;
     }
 
-    /* 🦸 HERO SECTION --------------------------------------------- */
+    
     .hero-section {
       width: 100%;
       min-height: calc(100vh - 70px);
@@ -96,7 +96,7 @@
       margin-top: 12px;
     }
 
-    /* 🎯 SEARCH FORM ---------------------------------------------- */
+   
     .search-form-container {
       max-width: 900px;
       background-color: #ffffff;
@@ -109,7 +109,6 @@
       color: #003366;
     }
 
-    /* 💙 BUTTON STYLES -------------------------------------------- */
     .btn-blue-outline {
       border-color: #007bff;
       color: #007bff;
@@ -135,7 +134,6 @@
       transform: translateY(-1px);
     }
 
-    /* 🧱 MAIN CONTENT --------------------------------------------- */
     main {
       flex: 1 0 auto;
     }
@@ -157,7 +155,6 @@
       margin-bottom: 1rem;
     }
 
-    /* 🦶 FOOTER ---------------------------------------------------- */
     .footer-main {
       background: linear-gradient(90deg, #f8faff, #ecf4ff);
       border-top: 1px solid #c8defc;
@@ -176,7 +173,7 @@
     }
     
     .nav-login-btn {
-      background-color: #1d3557;       /* Deep blue */
+      background-color: #1d3557;       
       color: #ffffff;
       border: 2px solid transparent;
       border-radius: 50px;
@@ -191,7 +188,7 @@
     
     /* Hover animation */
     .nav-login-btn:hover {
-      background-color: #457b9d;       /* Light blue */
+      background-color: #457b9d;       
       border-color: #1d3557;
       color: #ffffff;
       transform: translateY(-3px);
@@ -304,7 +301,7 @@
   </nav>
 
 
-  <!-- 🦸 HERO SECTION -->
+  <!-- Main SECTION -->
   {% block hero %}
   <section class="hero-section text-center">
     <h1 class="hero-title">Welcome to EasyCart</h1>
@@ -328,7 +325,7 @@
   </section>
   {% endblock %}
 
-  <!-- 🧱 MAIN CONTENT -->
+  <!-- MAIN CONTENT -->
   <main>
     {% block main_content %}
     <div class="content-wrapper">
@@ -341,7 +338,7 @@
     {% endblock %}
   </main>
 
-  <!-- 🦶 FOOTER -->
+  <!-- FOOTER -->
   <footer class="footer-main">
     <p>&copy; EasyCart</p>
   </footer>

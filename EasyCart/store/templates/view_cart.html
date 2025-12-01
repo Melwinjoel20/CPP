@@ -34,14 +34,12 @@ const LOGIN_URL = "{% url 'login' %}";
 
 
 
-// ✔ No separate constant → same pattern as product.html
 document.addEventListener("DOMContentLoaded", () => {
     loadCart();
 });
 
 async function loadCart() {
 
-    // ✔ Same header pattern as product.html
     const res = await fetch(VIEW_CART_URL, {
         method: "GET",
         headers: {
@@ -49,7 +47,7 @@ async function loadCart() {
         }
     });
 
-    // 🔥 CONSISTENT JWT ERROR HANDLING
+    // JWT ERROR HANDLING
     if (res.status === 401) {
         alert("Your session has expired. Please log in again.");
         window.location.href = LOGIN_URL;
@@ -104,7 +102,7 @@ async function loadCart() {
     checkout.style.display = "block";
 }
 
-// ✔ Remove item (same auth pattern as product.html)
+// Remove item 
 document.addEventListener("click", async (e) => {
     if (!e.target.classList.contains("remove-item-btn")) return;
 

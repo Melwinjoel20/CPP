@@ -6,9 +6,7 @@ from botocore.exceptions import ClientError
 CONFIG_PATH = "infra/config.json"
 
 
-# =========================
 # Config helpers
-# =========================
 
 def load_config():
     with open(CONFIG_PATH) as f:
@@ -18,12 +16,10 @@ def load_config():
 def save_config(cfg):
     with open(CONFIG_PATH, "w") as f:
         json.dump(cfg, f, indent=4)
-    print("✔ Updated config.json")
+    print(" Updated config.json")
 
-
-# =========================
 # DynamoDB helpers
-# =========================
+
 
 def create_cart_table(region):
     dynamodb = boto3.client("dynamodb", region_name=region)
@@ -31,12 +27,12 @@ def create_cart_table(region):
 
     try:
         dynamodb.describe_table(TableName=table_name)
-        print("✔ DynamoDB table already exists:", table_name)
+        print(" DynamoDB table already exists:", table_name)
         return table_name
     except ClientError:
         pass
 
-    print("🛠 Creating DynamoDB table: UserCart")
+    print(" Creating DynamoDB table: UserCart")
 
     dynamodb.create_table(
         TableName=table_name,
@@ -54,7 +50,7 @@ def create_cart_table(region):
     waiter = dynamodb.get_waiter("table_exists")
     waiter.wait(TableName=table_name)
 
-    print("✔ UserCart table created")
+    print(" UserCart table created")
     return table_name
 
 
@@ -64,12 +60,12 @@ def create_orders_table(region):
 
     try:
         dynamodb.describe_table(TableName=table_name)
-        print("✔ DynamoDB table already exists:", table_name)
+        print(" DynamoDB table already exists:", table_name)
         return table_name
     except ClientError:
         pass
 
-    print("🛠 Creating DynamoDB table: Orders")
+    print(" Creating DynamoDB table: Orders")
 
     dynamodb.create_table(
         TableName=table_name,
@@ -85,18 +81,18 @@ def create_orders_table(region):
     waiter = dynamodb.get_waiter("table_exists")
     waiter.wait(TableName=table_name)
 
-    print("✔ Orders table created")
+    print(" Orders table created")
     return table_name
 
 
-# =========================
+
 # SNS helpers
-# =========================
+
 
 def create_sns_topic(region):
     sns = boto3.client("sns", region_name=region)
     resp = sns.create_topic(Name="EasyCartOrderNotifications")
-    print("✔ SNS Topic:", resp["TopicArn"])
+    print(" SNS Topic:", resp["TopicArn"])
     return resp["TopicArn"]
 
 
@@ -110,13 +106,13 @@ def subscribe_email_to_sns(region, topic_arn, email):
         ReturnSubscriptionArn=False
     )
 
-    print(f"✔ Subscription request sent to {email}")
-    print("⚠️ NOTE: Email owner must click confirm link once (AWS requirement)")
+    print(f" Subscription request sent to {email}")
+    print(" NOTE: Email owner must click confirm link once (AWS requirement)")
 
 
-# =========================
+
 # Lambda helpers
-# =========================
+
 
 def create_lambda(region, fn_name, file_path, sns_topic_arn=None):
     """
@@ -195,7 +191,7 @@ def update_lambda_env(region, fn_name, topic_arn):
         }
     )
 
-    print(f"✔ Environment variable added to {fn_name}")
+    print(f" Environment variable added to {fn_name}")
 
 
 # (Optional) Function URL helper – unused now, but kept if you ever want it.
@@ -253,12 +249,12 @@ def enable_function_url(fn_name, region):
     return url
 
 
-# =========================
+
 # Main entrypoint
-# =========================
+
 
 def main():
-    print("\n🚀 Setting up CART SERVICE (DynamoDB + Lambdas + SNS)\n")
+    print("\n Setting up CART SERVICE (DynamoDB + Lambdas + SNS)\n")
 
     cfg = load_config()
     region = cfg["region"]
@@ -300,7 +296,7 @@ def main():
 
     save_config(cfg)
 
-    print("\n🎉 CART SERVICE READY (tables + lambdas + SNS)!\n")
+    print("\n CART SERVICE READY (tables + lambdas + SNS)!\n")
 
 
 if __name__ == "__main__":

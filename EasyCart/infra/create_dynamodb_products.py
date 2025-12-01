@@ -32,7 +32,7 @@ def create_table_if_needed(region, table_name):
     dynamodb = boto3.client("dynamodb", region_name=region)
 
     if table_exists(dynamodb, table_name):
-        print(f"✔ Table already exists: {table_name}")
+        print(f"Table already exists: {table_name}")
         return
 
     print(f"\n[1] Creating table: {table_name} ...")
@@ -131,12 +131,11 @@ def main():
         ]
     }
 
-    # Create + Seed each table
     for table_name, items in TABLES.items():
         create_table_if_needed(region, table_name)
         seed_data(region, table_name, items)
 
-    print("\n🎉 All DynamoDB tables created + seeded successfully!")
+    print("\nAll DynamoDB tables created + seeded successfully!")
 
 
 if __name__ == "__main__":
