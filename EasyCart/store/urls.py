@@ -20,6 +20,8 @@ urlpatterns = [
      path("admin_dashboard/", views_admin.admin_dashboard, name="admin_dashboard"),
      path("add-product/", views_admin.admin_add_product, name="admin_add_product"),
      path("manage-products/", views_admin.admin_manage_products, name="admin_manage_products"),
-     path("delete/<str:category>/<str:product_id>/", views_admin.admin_delete_product, name="admin_delete_product")
+     path("delete/<str:category>/<str:product_id>/", views_admin.admin_delete_product, name="admin_delete_product"),
+     path("offers/", views.offers, name="offers")
+
 
 ]

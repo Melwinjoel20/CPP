@@ -260,8 +260,7 @@
           </li>
 
 
-          <li class="nav-item"><a class="nav-link navbar-link" href="#">Offers</a></li>
-          <li class="nav-item"><a class="nav-link navbar-link" href="#">Contact</a></li>
+          <li class="nav-item"><a class="nav-link navbar-link" href="{% url 'offers' %}">Offers</a></li>
           <li class="nav-item"><a class="nav-link navbar-link" href="{% url 'view_cart' %}">My Cart</a></li>
           {% if request.session.cognito_groups and 'EasyCartAdmins' in request.session.cognito_groups %}
         <li class="nav-item">
