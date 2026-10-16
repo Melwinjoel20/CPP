@@ -9,7 +9,7 @@ CONFIG_PATH = "infra/config.json"
 ADMIN_TABLE_KEY = "admin_users_table"
 DEFAULT_ADMIN_TABLE_NAME = "EasyCartAdminUsers"
 
-
+#TEST
 def load_config():
     if os.path.exists(CONFIG_PATH):
         with open(CONFIG_PATH) as f:
